@@ -30,7 +30,7 @@ class BaseSimulator(ABC):
                 node_id: {
                     'borderColor': '#ad8b0e' if active_nodes is None or node_id in active_nodes else '#cccccc',
                     **self._eval(self.transactions['visualize'].effect, {
-                        'current_state': state,
+                        'state': state,
                     })} for node_id, state in self.states.items()
             }
         })
@@ -75,7 +75,8 @@ class BaseSimulator(ABC):
         }
 
     def _eval(self, code, args):
-        return EvalWithCompoundTypes(names=args).eval(code)
+        evaluator = EvalWithCompoundTypes(names=args)
+        return evaluator.eval(code)
 
     def _translate_node_id_to_local_id(self, node_id, message_node_id):
         return self.neighbours[node_id]['reversed_receive'][message_node_id]
@@ -87,11 +88,10 @@ class BaseSimulator(ABC):
         return False
 
     def init_states(self):
-        next_states = {}
         for node_id, current_state in self.states.items():
             if 'init' in self.transactions:
                 next_state = self._eval(self.transactions['init'].effect, {
-                    'current_state': current_state,
+                    'state': current_state,
                     **self._get_initial_state(node_id),
                 })
                 state = deepcopy(current_state)
@@ -104,7 +104,7 @@ class BaseSimulator(ABC):
         from_local_id = self._translate_node_id_to_local_id(to_node_id, from_node_id)
 
         next_state = self._eval(self.transactions['receive'].effect, {
-            'current_state': current_state,
+            'state': current_state,
             'from_node': from_local_id,
             'message': message,
         })
@@ -114,7 +114,7 @@ class BaseSimulator(ABC):
     def _push_messages(self, node_id, transaction_name):
         changed = False
         messages = self._eval(self.transactions[transaction_name].output, {
-            'current_state': self.states[node_id],
+            'state': self.states[node_id],
         })
 
         for to_local_id, message in messages:
@@ -127,13 +127,13 @@ class BaseSimulator(ABC):
         state = self.states[node_id]
         transaction = self.transactions[transaction_name]
         is_satisfied = self._eval(transaction.pre_condition, {
-            'current_state': state,
+            'state': state,
         })
         if not is_satisfied:
             return False
         changed = False
         next_state = self._eval(transaction.effect, {
-            'current_state': state,
+            'state': state,
         })
         if next_state:
             changed = True
@@ -230,8 +230,7 @@ class AsyncSimulator(BaseSimulator):
                 continue
             if self._run_transaction(node_id, transaction_name):
                 active_nodes.add(node_id)
-
-            self._add_to_details(active_nodes)
+                self._add_to_details(active_nodes)
 
 
 class AsyncSimulatorWithUID(AsyncSimulator):

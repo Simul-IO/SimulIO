@@ -49,3 +49,15 @@ class BidirectionalRing(Graph):
             edges.append(Edge(i, (i + 1) % n))
             # edges.append(Edge(i, (i + n - 1) % n))  # (i-1) % n == (i+n-1) % n
         super().__init__(nodes, edges)
+
+
+class CompleteGraph(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            for j in range(n):
+                if i != j:
+                    edges.append(Edge(i, j))
+        super().__init__(nodes, edges)

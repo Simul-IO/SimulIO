@@ -1,6 +1,6 @@
-DEFAULT_PRE_CONDITION = 'return False'
-DEFAULT_EFFECT = 'return current_state'
-DEFAULT_OUTPUT = 'return []'
+DEFAULT_PRE_CONDITION = 'False'
+DEFAULT_EFFECT = 'state'
+DEFAULT_OUTPUT = '[]'
 
 
 class Transaction:
