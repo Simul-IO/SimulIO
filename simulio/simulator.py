@@ -112,13 +112,16 @@ class BaseSimulator(ABC):
         self._push_messages(to_node_id, 'receive')
 
     def _push_messages(self, node_id, transaction_name):
+        changed = False
         messages = self._eval(self.transactions[transaction_name].output, {
             'current_state': self.states[node_id],
         })
 
         for to_local_id, message in messages:
+            changed = True
             to_node_id = self.neighbours[node_id]['send'][to_local_id]
             self.send_queue.append((node_id, to_node_id, message))
+        return changed
 
     def _run_transaction(self, node_id, transaction_name):
         state = self.states[node_id]
@@ -127,12 +130,17 @@ class BaseSimulator(ABC):
             'current_state': state,
         })
         if not is_satisfied:
-            return
+            return False
+        changed = False
         next_state = self._eval(transaction.effect, {
             'current_state': state,
         })
+        if next_state:
+            changed = True
         self.states[node_id].update(next_state)
-        self._push_messages(node_id, transaction_name)
+        if self._push_messages(node_id, transaction_name):
+            changed = True
+        return changed
 
     @abstractmethod
     def run(self):
@@ -164,8 +172,8 @@ class SyncSimulator(BaseSimulator):
                 for transaction_name in self.transactions:
                     if transaction_name in PREDEFINED_TRANSACTIONS:
                         continue
-                    self._run_transaction(node_id, transaction_name)
-                    active_nodes.add(node_id)
+                    if self._run_transaction(node_id, transaction_name):
+                        active_nodes.add(node_id)
             self._add_to_details(active_nodes)
             round_number += 1
 
@@ -195,7 +203,7 @@ class AsyncSimulator(BaseSimulator):
         super().__init__(graph, transactions)
 
     def _receive_messages(self, active_nodes):
-        if len(self.send_queue) > 0 and random.randint(0, 1) == 0:
+        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
             random_index = random.randint(0, len(self.send_queue) - 1)
             new_messages = []
             new_messages.extend(self.send_queue[:random_index])
@@ -220,8 +228,8 @@ class AsyncSimulator(BaseSimulator):
             transaction_name = random.choice(list(self.transactions.keys()))
             if transaction_name in ['init', 'receive', 'visualize']:
                 continue
-            self._run_transaction(node_id, transaction_name)
-            active_nodes.add(node_id)
+            if self._run_transaction(node_id, transaction_name):
+                active_nodes.add(node_id)
 
             self._add_to_details(active_nodes)
 

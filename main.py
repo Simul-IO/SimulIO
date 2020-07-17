@@ -7,7 +7,7 @@ from simulio.transaction import parse
 if __name__ == '__main__':
     with open('./examples/leader_election_automata.py') as f:
         lines = f.readlines()
-    ring10 = BidirectionalRing(5)
+    ring10 = BidirectionalRing(15)
     simulator = AsyncSimulatorWithUID(ring10, parse(lines))
     simulator.run()
     with open('result.json', 'w') as f:
