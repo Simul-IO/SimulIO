@@ -31,6 +31,15 @@
             z-index: 2;
         }
 
+        #current_state {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 2;
+        }
+
         #drop_zone {
             position: absolute;
             top: 0;
@@ -84,6 +93,7 @@
 </head>
 <body>
 <div id="mynetwork"></div>
+<div id="current_state"></div>
 <button id="prev">&lt;</button>
 <button id="next">&gt;</button>
 <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
@@ -92,6 +102,7 @@
 
 <script type="text/javascript">
     const EDGE_LENGTH = 250;
+
     function loadResult(event) {
         const result = JSON.parse(event.target.result);
         document.getElementById('drop_zone').remove();
@@ -118,7 +129,11 @@
             for (const nodeId in step.states) {
                 newNodes.push({
                     'id': nodeId,
-                    color: step.states[nodeId].color,
+                    borderWidth: 4,
+                    color: {
+                        background: step.states[nodeId].color,
+                        border: step.states[nodeId].borderColor,
+                    },
                     label: step.states[nodeId].label,
                 });
             }
@@ -147,6 +162,7 @@
                 })
             }
             edges.update(newEdges);
+            document.getElementById('current_state').innerHTML = `${stepIndex} / ${result.steps.length}`
         }
 
         updateByStep(0);
@@ -157,24 +173,50 @@
             nodes: nodes,
             edges: edges
         };
-        const options = {};
+        const options = {
+                "edges": {
+                    "smooth": {
+                        "type": "continuous",
+                        "forceDirection": "none",
+                        "roundness": 0.6
+                    }
+                },
+                "physics": {
+                    "barnesHut": {
+                        "gravitationalConstant": -20000,
+                        "avoidOverlap": 1
+                    },
+                }
+            }
+        ;
         network = new vis.Network(container, data, options);
         network.stabilize();
 
         let currentIndex = 0;
 
-        document.getElementById('prev').addEventListener('click', function () {
+        function prev() {
             if (currentIndex > 0) {
                 currentIndex--;
             }
             updateByStep(currentIndex);
-        });
-        document.getElementById('next').addEventListener('click', function () {
+        }
+
+        function next() {
             if (currentIndex + 1 < result.steps.length) {
                 currentIndex++;
             }
             updateByStep(currentIndex);
-        });
+        }
+
+        document.getElementById('prev').addEventListener('click', prev);
+        document.getElementById('next').addEventListener('click', next);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowRight') {
+                next();
+            } else if (event.key === 'ArrowLeft') {
+                prev();
+            }
+        })
     }
 
 </script>

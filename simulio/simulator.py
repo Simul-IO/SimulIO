@@ -5,6 +5,8 @@ from random import shuffle
 
 from simpleeval import EvalWithCompoundTypes
 
+PREDEFINED_TRANSACTIONS = ['init', 'receive', 'visualize']
+
 
 class BaseSimulator(ABC):
     def __init__(self, graph, transactions):
@@ -21,13 +23,15 @@ class BaseSimulator(ABC):
         self.details = []
         self.init_states()
 
-    def _add_to_details(self):
+    def _add_to_details(self, active_nodes=None):
         self.details.append({
             'send_messages': deepcopy(self.send_queue),
             'states': {
-                node_id: self._eval(self.transactions['visualize'].effect, {
-                    'current_state': state,
-                }) for node_id, state in self.states.items()
+                node_id: {
+                    'borderColor': '#ad8b0e' if active_nodes is None or node_id in active_nodes else '#cccccc',
+                    **self._eval(self.transactions['visualize'].effect, {
+                        'current_state': state,
+                    })} for node_id, state in self.states.items()
             }
         })
 
@@ -139,31 +143,90 @@ class SyncSimulator(BaseSimulator):
     def __init__(self, graph, transactions):
         super().__init__(graph, transactions)
 
-    def _receive_messages(self):
+    def _receive_messages(self, active_nodes):
         messages = deepcopy(self.send_queue)
         self.send_queue.clear()
         for from_node_id, to_node_id, message in messages:
             self._receive(from_node_id, to_node_id, message)
+            active_nodes.add(to_node_id)
 
     def run(self):
+
+        self._add_to_details()
         round_number = 0
         while self._is_alive():
-            self._add_to_details()
             print('ROUND', round_number)
-            self._receive_messages()
+            active_nodes = set()
+            self._receive_messages(active_nodes)
             for node_id in self.states:
                 if not self.states[node_id]['alive']:
                     continue
                 for transaction_name in self.transactions:
-                    if transaction_name in ['init', 'receive', 'visualize']:
+                    if transaction_name in PREDEFINED_TRANSACTIONS:
                         continue
                     self._run_transaction(node_id, transaction_name)
-
+                    active_nodes.add(node_id)
+            self._add_to_details(active_nodes)
             round_number += 1
-        self._add_to_details()
 
 
 class SyncSimulatorWithUID(SyncSimulator):
+    def __init__(self, graph, transactions):
+        uids = set()
+        while len(uids) < len(graph.nodes):
+            uids.add(random.randint(1, len(graph.nodes) ** 2))
+        uids = list(uids)
+        shuffle(uids)
+        self.uids = {}
+        for i, node in enumerate(graph.nodes):
+            self.uids[node.id] = uids[i]
+
+        super().__init__(graph, transactions)
+
+    def _get_initial_state(self, node_id):
+        return {
+            'uid': self.uids[node_id],
+            **super()._get_initial_state(node_id),
+        }
+
+
+class AsyncSimulator(BaseSimulator):
+    def __init__(self, graph, transactions):
+        super().__init__(graph, transactions)
+
+    def _receive_messages(self, active_nodes):
+        if len(self.send_queue) > 0 and random.randint(0, 1) == 0:
+            random_index = random.randint(0, len(self.send_queue) - 1)
+            new_messages = []
+            new_messages.extend(self.send_queue[:random_index])
+            new_messages.extend(self.send_queue[random_index + 1:])
+
+            self._receive(*self.send_queue[random_index])
+            active_nodes.add(self.send_queue[random_index][1])
+            self.send_queue = new_messages
+            return True
+        return False
+
+    def run(self):
+        self._add_to_details()
+        while self._is_alive():
+            active_nodes = set()
+            if self._receive_messages(active_nodes):
+                self._add_to_details(active_nodes)
+                continue
+            node_id = random.choice(list(self.states.keys()))
+            if not self.states[node_id]['alive']:
+                continue
+            transaction_name = random.choice(list(self.transactions.keys()))
+            if transaction_name in ['init', 'receive', 'visualize']:
+                continue
+            self._run_transaction(node_id, transaction_name)
+            active_nodes.add(node_id)
+
+            self._add_to_details(active_nodes)
+
+
+class AsyncSimulatorWithUID(AsyncSimulator):
     def __init__(self, graph, transactions):
         uids = set()
         while len(uids) < len(graph.nodes):

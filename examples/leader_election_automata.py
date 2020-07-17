@@ -72,7 +72,9 @@ current_state['state'] == 'LEADER'
 # START_TRANSACTION: visualize
 # EFFECT
 {
-    'label': 'uid: ' + str(current_state['uid']) + '\n max_uid: ' + str(current_state['max_uid']),
+    'label': 'uid: ' + str(current_state['uid']) + '\nmax_uid: ' + str(
+        current_state['max_uid']) + '\nr_m: ' + str(current_state['received_message']) + '\nstate: ' + str(
+        current_state['state']),
     'color': '#cccccc' if current_state['state'] == 'UNKNOWN' else '#f7c7c7' if current_state[
                                                                                     'state'] == 'LEADER' else '#c7cff7',
 }
