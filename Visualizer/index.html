@@ -101,12 +101,9 @@
 </div>
 
 <script type="text/javascript">
-    const EDGE_LENGTH = 250;
-
     function loadResult(event) {
         const result = JSON.parse(event.target.result);
         document.getElementById('drop_zone').remove();
-        console.log(result);
 
         var nodes = null;
         var edges = null;
@@ -117,7 +114,6 @@
             return {
                 'id': `${edge.from}-${edge.to}`,
                 'arrows': 'to',
-                'length': EDGE_LENGTH,
                 font: {align: 'middle'},
                 ...edge
             }
@@ -157,7 +153,6 @@
                 newEdges.push({
                     id: edgeId,
                     label: label,
-                    'length': EDGE_LENGTH,
                     font: {align: 'middle'},
                 })
             }
@@ -174,23 +169,19 @@
             edges: edges
         };
         const options = {
-                "edges": {
-                    "smooth": {
-                        "type": "continuous",
-                        "forceDirection": "none",
-                        "roundness": 0.6
-                    }
-                },
                 "physics": {
                     "barnesHut": {
                         "gravitationalConstant": -20000,
-                        "avoidOverlap": 1
+                        "avoidOverlap": 1.5
                     },
                 }
             }
         ;
         network = new vis.Network(container, data, options);
         network.stabilize();
+        network.on("stabilizationIterationsDone", function () {
+            network.setOptions( { physics: false } );
+        });
 
         let currentIndex = 0;
 
