@@ -18,7 +18,18 @@ class BaseSimulator(ABC):
             node.id: self._make_local_neighbours(node.id) for node in graph.nodes
         }
         self.send_queue = []
+        self.details = []
         self.init_states()
+
+    def _add_to_details(self):
+        self.details.append({
+            'send_messages': deepcopy(self.send_queue),
+            'states': {
+                node_id: self._eval(self.transactions['visualize'].effect, {
+                    'current_state': state,
+                }) for node_id, state in self.states.items()
+            }
+        })
 
     def _make_local_neighbours(self, node_id):
         neighbours = set()
@@ -137,22 +148,26 @@ class SyncSimulator(BaseSimulator):
     def run(self):
         round_number = 0
         while self._is_alive():
+            self._add_to_details()
             print('ROUND', round_number)
             self._receive_messages()
             for node_id in self.states:
+                if not self.states[node_id]['alive']:
+                    continue
                 for transaction_name in self.transactions:
-                    if transaction_name in ['init', 'receive']:
+                    if transaction_name in ['init', 'receive', 'visualize']:
                         continue
                     self._run_transaction(node_id, transaction_name)
 
             round_number += 1
+        self._add_to_details()
 
 
 class SyncSimulatorWithUID(SyncSimulator):
     def __init__(self, graph, transactions):
         uids = set()
         while len(uids) < len(graph.nodes):
-            uids.add(random.randint(1, len(graph.nodes) ** 10))
+            uids.add(random.randint(1, len(graph.nodes) ** 2))
         uids = list(uids)
         shuffle(uids)
         self.uids = {}

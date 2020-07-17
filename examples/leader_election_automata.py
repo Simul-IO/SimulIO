@@ -9,6 +9,7 @@ return {
     'leader': None,
     'received_message': '',
     'alive': True,
+    'new_uid': False,
 }
 # OUTPUT
 [[node_id, 'uid ' + str(current_state['max_uid'])] for node_id in current_state['send_neighbour_ids']]
@@ -28,14 +29,17 @@ current_state['received_message'].startswith('uid ') and current_state['state'] 
 {
     'max_uid': int(current_state['received_message'][4:]),
     'received_message': '',
-} if int(current_state['received_message'][4:]) > current_state['max_uid'] else {} if int(
+    'new_uid': True,
+} if int(current_state['received_message'][4:]) > current_state['max_uid'] else {'new_uid': False} if int(
     current_state['received_message'][4:]) < current_state['max_uid'] else {'state': 'LEADER',
                                                                             'received_message': '',
-                                                                            'leader': current_state['uid'], } if int(
+                                                                            'leader': current_state['uid'],
+                                                                            'new_uid': False, } if int(
     current_state['received_message'][4:]) == current_state['uid'] else {
-    'received_message': '', }
+    'received_message': '', 'new_uid': False}
 # OUTPUT
-[[node_id, 'uid ' + str(current_state['max_uid'])] for node_id in current_state['send_neighbour_ids']]
+[[node_id, 'uid ' + str(current_state['max_uid'])] for node_id in current_state['send_neighbour_ids']] if current_state[
+    'new_uid'] else []
 # END_TRANSACTION
 
 # START_TRANSACTION: receive_leader
@@ -62,4 +66,14 @@ current_state['state'] == 'LEADER'
 }
 # OUTPUT
 [[node_id, 'leader ' + str(current_state['uid'])] for node_id in current_state['send_neighbour_ids']]
+# END_TRANSACTION
+
+
+# START_TRANSACTION: visualize
+# EFFECT
+{
+    'label': 'uid: ' + str(current_state['uid']) + '\n max_uid: ' + str(current_state['max_uid']),
+    'color': '#cccccc' if current_state['state'] == 'UNKNOWN' else '#f7c7c7' if current_state[
+                                                                                    'state'] == 'LEADER' else '#c7cff7',
+}
 # END_TRANSACTION

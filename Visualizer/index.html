@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+    <title>Vis Network | Data | Custom Scaling</title>
+
+    <style type="text/css">
+        html, body {
+            font: 10pt arial;
+        }
+
+        #mynetwork {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        #prev {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            z-index: 2;
+        }
+
+        #next {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            z-index: 2;
+        }
+
+        #drop_zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+            background: #eee;
+            text-align: center;
+            font-size: 40px;
+            padding-top: 15%;
+        }
+    </style>
+
+    <script type="text/javascript" src="./vis-network.min.js"></script>
+    <script>
+
+        function dropHandler(ev) {
+            console.log('File(s) dropped');
+
+            // Prevent default behavior (Prevent file from being opened)
+            ev.preventDefault();
+
+            if (ev.dataTransfer.items) {
+                // Use DataTransferItemList interface to access the file(s)
+                for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                    // If dropped items aren't files, reject them
+                    if (ev.dataTransfer.items[i].kind === 'file') {
+                        var file = ev.dataTransfer.items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = loadResult;
+                        reader.readAsText(file)
+                    }
+                }
+            } else {
+                // Use DataTransfer interface to access the file(s)
+                for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                    var file = ev.dataTransfer.files[i];
+                    const reader = new FileReader();
+                    reader.onload = loadResult;
+                    reader.readAsText(file)
+                }
+            }
+        }
+
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+        }
+
+    </script>
+</head>
+<body>
+<div id="mynetwork"></div>
+<button id="prev">&lt;</button>
+<button id="next">&gt;</button>
+<div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+    <p>Drag result file here to view visualization...</p>
+</div>
+
+<script type="text/javascript">
+    function loadResult(event) {
+        const result = JSON.parse(event.target.result);
+        document.getElementById('drop_zone').remove();
+        console.log(result);
+
+        var nodes = null;
+        var edges = null;
+
+        nodes = new vis.DataSet(result.graph.nodes);
+
+        edges = new vis.DataSet(result.graph.edges.map((edge) => {
+            return {
+                'id': `${edge.from}-${edge.to}`,
+                'arrows': 'to',
+                'length': 150,
+                ...edge
+            }
+        }));
+
+        function updateByStep(stepIndex) {
+            const step = result.steps[stepIndex];
+            const newNodes = [];
+            for (const nodeId in step.states) {
+                newNodes.push({
+                    'id': nodeId,
+                    color: step.states[nodeId].color,
+                    label: step.states[nodeId].label,
+                });
+            }
+            nodes.update(newNodes);
+            const messages = {};
+            for (const edge of result.graph.edges) {
+                messages[`${edge.from}-${edge.to}`] = [];
+            }
+            for (let sendMessage of step.send_messages) {
+                const [from, to, message] = sendMessage;
+                const edgeId = `${from}-${to}`;
+                messages[edgeId].push(message);
+            }
+
+            const newEdges = [];
+            for (const edgeId in messages) {
+                let label = messages[edgeId].join('\n');
+                if (!label) {
+                    label = ' '
+                }
+                newEdges.push({
+                    id: edgeId,
+                    label: label,
+                    'length': 150,
+                })
+            }
+            edges.update(newEdges);
+        }
+
+        updateByStep(0);
+
+        // Instantiate our network object.
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        const options = {};
+        network = new vis.Network(container, data, options);
+
+        let currentIndex = 0;
+
+        document.getElementById('prev').addEventListener('click', function () {
+            if (currentIndex > 0) {
+                currentIndex--;
+            }
+            updateByStep(currentIndex);
+        });
+        document.getElementById('next').addEventListener('click', function () {
+            if (currentIndex + 1 < result.steps.length) {
+                currentIndex++;
+            }
+            updateByStep(currentIndex);
+        });
+    }
+
+</script>
+
+</body>
+</html>
