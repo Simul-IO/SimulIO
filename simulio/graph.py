@@ -40,6 +40,16 @@ class Graph:
         }
 
 
+class UnidirectionalRing(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            edges.append(Edge(i, (i + 1) % n))
+        super().__init__(nodes, edges)
+
+
 class BidirectionalRing(Graph):
     def __init__(self, n):
         nodes = []
@@ -47,7 +57,7 @@ class BidirectionalRing(Graph):
         for i in range(n):
             nodes.append(Node(i))
             edges.append(Edge(i, (i + 1) % n))
-            # edges.append(Edge(i, (i + n - 1) % n))  # (i-1) % n == (i+n-1) % n
+            edges.append(Edge(i, (i + n - 1) % n))  # (i-1) % n == (i+n-1) % n
         super().__init__(nodes, edges)
 
 
