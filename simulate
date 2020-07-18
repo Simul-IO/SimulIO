@@ -60,8 +60,8 @@ if __name__ == '__main__':
         simulator = AsyncSimulatorWithUID(graph, parse(lines))
 
     simulator.run()
-    with open('result.json', 'w') as f:
-        json.dump({
-            'graph': simulator.graph.to_dict(),
-            'steps': simulator.details,
-        }, f)
+
+    print(json.dumps({
+        'graph': simulator.graph.to_dict(),
+        'steps': simulator.details,
+    }))

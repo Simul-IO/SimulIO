@@ -163,7 +163,6 @@ class SyncSimulator(BaseSimulator):
         self._add_to_details()
         round_number = 0
         while self._is_alive():
-            print('ROUND', round_number)
             active_nodes = set()
             self._receive_messages(active_nodes)
             for node_id in self.states:
