@@ -2,7 +2,7 @@
 
 # START_TRANSITION: init
 # EFFECT
-{
+return {
     'output_neighbour_ids': output_neighbour_ids,
     'input_neighbour_ids': input_neighbour_ids,
     'uid': uid,
@@ -14,67 +14,73 @@
     'new_uid': False,
 }
 # OUTPUT
-[[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']]
+return [[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']]
 # END_TRANSITION
 
 # START_TRANSITION: receive
 # EFFECT
-{
+return {
     'received_messages': state['received_messages'] + [message],
 }
 # END_TRANSITION
 
 # START_TRANSITION: receive_uid
 # PRE_CONDITION
-state['received_messages'] and state['received_messages'][0].startswith('uid ') and state['state'] != 'LEADER'
+return state['received_messages'] and state['received_messages'][0].startswith('uid ') and state['state'] != 'LEADER'
 # EFFECT
-{
-    'max_uid': int(state['received_messages'][0][4:]),
-    'received_messages': state['received_messages'][1:],
-    'new_uid': True,
-} if int(state['received_messages'][0][4:]) > state['max_uid'] \
-    else {'new_uid': False,
-          'received_messages': state['received_messages'][1:],
-          } if int(state['received_messages'][0][4:]) < state['max_uid'] \
-    else {'state': 'LEADER',
-          'received_messages': state['received_messages'][1:],
-          'leader': state['uid'],
-          'new_uid': False,
-          }
+received_uid = int(state['received_messages'][0][4:])
+state['received_messages'] = state['received_messages'][1:]
+if received_uid > state['max_uid']:
+    return {
+        'max_uid': received_uid,
+        'received_messages': state['received_messages'],
+        'new_uid': True,
+    }
+if received_uid < state['max_uid']:
+    return {
+        'new_uid': False,
+        'received_messages': state['received_messages'],
+    }
+return {
+  'state': 'LEADER',
+  'received_messages': state['received_messages'],
+  'leader': state['uid'],
+  'new_uid': False,
+}
 # OUTPUT
-[[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']] if state['new_uid'] else []
+return [[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']] if state['new_uid'] else []
 # END_TRANSITION
 
 # START_TRANSITION: receive_leader
 # PRE_CONDITION
-state['received_messages'] and state['received_messages'][0].startswith('leader ')
+return state['received_messages'] and state['received_messages'][0].startswith('leader ')
 # EFFECT
-{
+return {
     'leader': int(state['received_messages'][0][7:]),
     'alive': False,
     'state': 'KNOWN',
     'received_messages': state['received_messages'][1:],
 }
 # OUTPUT
-[[node_id, 'leader ' + str(state['leader'])] for node_id in state['output_neighbour_ids']]
+return [[node_id, 'leader ' + str(state['leader'])] for node_id in state['output_neighbour_ids']]
 # END_TRANSITION
 
 
 # START_TRANSITION: send_leader
 # PRE_CONDITION
-state['state'] == 'LEADER'
+return state['state'] == 'LEADER'
 # EFFECT
-{
+return {
     'alive': False,
 }
 # OUTPUT
-[[node_id, 'leader ' + str(state['uid'])] for node_id in state['output_neighbour_ids']]
+return [[node_id, 'leader ' + str(state['uid'])] for node_id in state['output_neighbour_ids']]
 # END_TRANSITION
 
 
 # START_TRANSITION: visualize
 # EFFECT
-{
+return {
     'label': 'uid: ' + str(state['uid']) +
              '\nmax_uid: ' + str(state['max_uid']) +
              '\nr_m: ' + str(state['received_messages']) +

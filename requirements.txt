@@ -1,1 +1,2 @@
-simpleeval==0.9.10
+RestrictedPython==5.0
+numpy==1.19.0

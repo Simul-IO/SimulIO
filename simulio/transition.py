@@ -1,6 +1,6 @@
-DEFAULT_PRE_CONDITION = 'False'
-DEFAULT_EFFECT = 'state'
-DEFAULT_OUTPUT = '[]'
+DEFAULT_PRE_CONDITION = 'return False'
+DEFAULT_EFFECT = 'return state'
+DEFAULT_OUTPUT = 'return []'
 
 
 class Transition:
