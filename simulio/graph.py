@@ -71,3 +71,34 @@ class CompleteGraph(Graph):
                 if i != j:
                     edges.append(Edge(i, j))
         super().__init__(nodes, edges)
+
+
+class ArbitraryGraph(Graph):
+    def __init__(self, graph_file):
+        nodes, edges = parse_graph_file(graph_file)
+        super().__init__(nodes, edges)
+
+
+def parse_graph_file(graph_file):
+    NODES = 'nodes'
+    EDGES = 'edges'
+
+    with open(graph_file) as f:
+        lines = f.readlines()
+
+    nodes = []
+    edges = []
+    reader_state = None
+    for line in lines:
+        if line.startswith(NODES) and reader_state is None:
+            reader_state = NODES
+        elif line.startswith(EDGES):
+            reader_state = EDGES
+        elif reader_state == NODES and line != '\n':
+            nodes.append(Node(int(line[1:])))
+        elif reader_state == EDGES and line != '\n':
+            s = line.split('->')
+            from_node_id = int(s[0].strip()[1:])
+            to_node_id = int(s[1].strip()[1:])
+            edges.append(Edge(from_node_id, to_node_id))
+    return nodes, edges
