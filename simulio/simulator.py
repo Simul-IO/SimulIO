@@ -70,8 +70,8 @@ class BaseSimulator(ABC):
 
     def _get_initial_state(self, node_id):
         return {
-            'send_neighbour_ids': list(self.neighbours[node_id]['send'].keys()),
-            'receive_neighbour_ids': list(self.neighbours[node_id]['reversed_receive'].values()),
+            'output_neighbour_ids': list(self.neighbours[node_id]['send'].keys()),
+            'input_neighbour_ids': list(self.neighbours[node_id]['reversed_receive'].values()),
         }
 
     def _eval(self, code, args):
