@@ -1,0 +1,67 @@
+#!/usr/bin/python3
+
+import json
+import argparse
+
+from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, ArbitraryGraph
+from simulio.simulator import SyncSimulator, SyncSimulatorWithUID, AsyncSimulator, AsyncSimulatorWithUID
+from simulio.transaction import parse
+
+UNIDIRECTIONAL_RING = 'UnidirectionalRing'
+BIDIRECTIONAL_RING = 'BidirectionalRing'
+COMPLETE_GRAPH = 'CompleteGraph'
+ARBITRARY_GRAPH = 'Arbitrary'
+
+SYNC_SIMULATOR = 'SyncSimulator'
+SYNC_SIMULATOR_WITH_UID = 'SyncSimulatorWithUID'
+ASYNC_SIMULATOR = 'AsyncSimulator'
+ASYNC_SIMULATOR_WITH_UID = 'AsyncSimulatorWithUID'
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph.')
+    parser.add_argument('-a', '--automata', required=True,
+                        help='Automata algorithm file')
+    parser.add_argument('-g', '--graph', required=True,
+                        choices=[UNIDIRECTIONAL_RING, BIDIRECTIONAL_RING, COMPLETE_GRAPH, ARBITRARY_GRAPH],
+                        help='Simulate the automaton operating on GRAPH')
+    parser.add_argument('-n', '--network-size',
+                        help="For UnidirectionalRing and BidirectionalRing and CompleteGraph must specify network size")
+    parser.add_argument('-gf', '--graph-file',
+                        help='For Arbitrary graph, give a graph file definition')
+    parser.add_argument('-t', '--type',
+                        choices=[SYNC_SIMULATOR, SYNC_SIMULATOR_WITH_UID, ASYNC_SIMULATOR_WITH_UID],
+                        help='type of simulator(Sync, Sync-UID, Async-UID)'
+                        )
+    parser.add_argument('-s', '--sleep', type=float, default=0.0,
+                        help='Sleep for this number of seconds between steps')  # TODO
+    args = parser.parse_args()
+
+    with open(str(args.automata)) as f:
+        lines = f.readlines()
+
+    graph = None
+    if args.graph == UNIDIRECTIONAL_RING:
+        graph = UnidirectionalRing(int(args.network_size))
+    elif args.graph == BIDIRECTIONAL_RING:
+        graph = BidirectionalRing(int(args.network_size))
+    elif args.graph == COMPLETE_GRAPH:
+        graph = CompleteGraph(int(args.network_size))
+    else:  # ARBITRARY_GRAPH
+        graph = ArbitraryGraph(str(args.graph_file))
+
+    simulator = None
+    if args.type == SYNC_SIMULATOR:
+        simulator = SyncSimulator(graph, parse(lines))
+    elif args.type == SYNC_SIMULATOR_WITH_UID:
+        simulator = SyncSimulatorWithUID(graph, parse(lines))
+    elif args.type == ASYNC_SIMULATOR:
+        simulator = AsyncSimulator(graph, parse(lines))
+    else:  # ASYNC_SIMULATOR_WITH_UID:
+        simulator = AsyncSimulatorWithUID(graph, parse(lines))
+
+    simulator.run()
+    with open('result.json', 'w') as f:
+        json.dump({
+            'graph': simulator.graph.to_dict(),
+            'steps': simulator.details,
+        }, f)
