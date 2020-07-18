@@ -5,13 +5,13 @@ from random import shuffle
 
 from simpleeval import EvalWithCompoundTypes
 
-PREDEFINED_TRANSACTIONS = ['init', 'receive', 'visualize']
+PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
 
 class BaseSimulator(ABC):
-    def __init__(self, graph, transactions):
+    def __init__(self, graph, transitions):
         self.graph = graph
-        self.transactions = transactions
+        self.transitions = transitions
 
         self.states = {
             node.id: {'alive': True} for node in self.graph.nodes
@@ -29,7 +29,7 @@ class BaseSimulator(ABC):
             'states': {
                 node_id: {
                     'borderColor': '#ad8b0e' if active_nodes is None or node_id in active_nodes else '#cccccc',
-                    **self._eval(self.transactions['visualize'].effect, {
+                    **self._eval(self.transitions['visualize'].effect, {
                         'state': state,
                     })} for node_id, state in self.states.items()
             }
@@ -89,8 +89,8 @@ class BaseSimulator(ABC):
 
     def init_states(self):
         for node_id, current_state in self.states.items():
-            if 'init' in self.transactions:
-                next_state = self._eval(self.transactions['init'].effect, {
+            if 'init' in self.transitions:
+                next_state = self._eval(self.transitions['init'].effect, {
                     'state': current_state,
                     **self._get_initial_state(node_id),
                 })
@@ -103,7 +103,7 @@ class BaseSimulator(ABC):
         current_state = self.states[to_node_id]
         from_local_id = self._translate_node_id_to_local_id(to_node_id, from_node_id)
 
-        next_state = self._eval(self.transactions['receive'].effect, {
+        next_state = self._eval(self.transitions['receive'].effect, {
             'state': current_state,
             'from_node': from_local_id,
             'message': message,
@@ -111,9 +111,9 @@ class BaseSimulator(ABC):
         self.states[to_node_id].update(next_state)
         self._push_messages(to_node_id, 'receive')
 
-    def _push_messages(self, node_id, transaction_name):
+    def _push_messages(self, node_id, transition_name):
         changed = False
-        messages = self._eval(self.transactions[transaction_name].output, {
+        messages = self._eval(self.transitions[transition_name].output, {
             'state': self.states[node_id],
         })
 
@@ -123,22 +123,22 @@ class BaseSimulator(ABC):
             self.send_queue.append((node_id, to_node_id, message))
         return changed
 
-    def _run_transaction(self, node_id, transaction_name):
+    def _run_transition(self, node_id, transition_name):
         state = self.states[node_id]
-        transaction = self.transactions[transaction_name]
-        is_satisfied = self._eval(transaction.pre_condition, {
+        transition = self.transitions[transition_name]
+        is_satisfied = self._eval(transition.pre_condition, {
             'state': state,
         })
         if not is_satisfied:
             return False
         changed = False
-        next_state = self._eval(transaction.effect, {
+        next_state = self._eval(transition.effect, {
             'state': state,
         })
         if next_state:
             changed = True
         self.states[node_id].update(next_state)
-        if self._push_messages(node_id, transaction_name):
+        if self._push_messages(node_id, transition_name):
             changed = True
         return changed
 
@@ -148,8 +148,8 @@ class BaseSimulator(ABC):
 
 
 class SyncSimulator(BaseSimulator):
-    def __init__(self, graph, transactions):
-        super().__init__(graph, transactions)
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
 
     def _receive_messages(self, active_nodes):
         messages = deepcopy(self.send_queue)
@@ -169,17 +169,17 @@ class SyncSimulator(BaseSimulator):
             for node_id in self.states:
                 if not self.states[node_id]['alive']:
                     continue
-                for transaction_name in self.transactions:
-                    if transaction_name in PREDEFINED_TRANSACTIONS:
+                for transition_name in self.transitions:
+                    if transition_name in PREDEFINED_TRANSITIONS:
                         continue
-                    if self._run_transaction(node_id, transaction_name):
+                    if self._run_transition(node_id, transition_name):
                         active_nodes.add(node_id)
             self._add_to_details(active_nodes)
             round_number += 1
 
 
 class SyncSimulatorWithUID(SyncSimulator):
-    def __init__(self, graph, transactions):
+    def __init__(self, graph, transitions):
         uids = set()
         while len(uids) < len(graph.nodes):
             uids.add(random.randint(1, len(graph.nodes) ** 2))
@@ -189,7 +189,7 @@ class SyncSimulatorWithUID(SyncSimulator):
         for i, node in enumerate(graph.nodes):
             self.uids[node.id] = uids[i]
 
-        super().__init__(graph, transactions)
+        super().__init__(graph, transitions)
 
     def _get_initial_state(self, node_id):
         return {
@@ -199,8 +199,8 @@ class SyncSimulatorWithUID(SyncSimulator):
 
 
 class AsyncSimulator(BaseSimulator):
-    def __init__(self, graph, transactions):
-        super().__init__(graph, transactions)
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
 
     def _receive_messages(self, active_nodes):
         if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
@@ -225,16 +225,16 @@ class AsyncSimulator(BaseSimulator):
             node_id = random.choice(list(self.states.keys()))
             if not self.states[node_id]['alive']:
                 continue
-            transaction_name = random.choice(list(self.transactions.keys()))
-            if transaction_name in ['init', 'receive', 'visualize']:
+            transition_name = random.choice(list(self.transitions.keys()))
+            if transition_name in ['init', 'receive', 'visualize']:
                 continue
-            if self._run_transaction(node_id, transaction_name):
+            if self._run_transition(node_id, transition_name):
                 active_nodes.add(node_id)
                 self._add_to_details(active_nodes)
 
 
 class AsyncSimulatorWithUID(AsyncSimulator):
-    def __init__(self, graph, transactions):
+    def __init__(self, graph, transitions):
         uids = set()
         while len(uids) < len(graph.nodes):
             uids.add(random.randint(1, len(graph.nodes) ** 2))
@@ -244,7 +244,7 @@ class AsyncSimulatorWithUID(AsyncSimulator):
         for i, node in enumerate(graph.nodes):
             self.uids[node.id] = uids[i]
 
-        super().__init__(graph, transactions)
+        super().__init__(graph, transitions)
 
     def _get_initial_state(self, node_id):
         return {
