@@ -1,6 +1,6 @@
 # Leader Election Algorithm in Unidirectional Ring
 
-# START_TRANSACTION: init
+# START_TRANSITION: init
 # EFFECT
 {
     'output_neighbour_ids': output_neighbour_ids,
@@ -15,16 +15,16 @@
 }
 # OUTPUT
 [[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']]
-# END_TRANSACTION
+# END_TRANSITION
 
-# START_TRANSACTION: receive
+# START_TRANSITION: receive
 # EFFECT
 {
     'received_messages': state['received_messages'] + [message],
 }
-# END_TRANSACTION
+# END_TRANSITION
 
-# START_TRANSACTION: receive_uid
+# START_TRANSITION: receive_uid
 # PRE_CONDITION
 state['received_messages'] and state['received_messages'][0].startswith('uid ') and state['state'] != 'LEADER'
 # EFFECT
@@ -43,9 +43,9 @@ state['received_messages'] and state['received_messages'][0].startswith('uid ') 
           }
 # OUTPUT
 [[node_id, 'uid ' + str(state['max_uid'])] for node_id in state['output_neighbour_ids']] if state['new_uid'] else []
-# END_TRANSACTION
+# END_TRANSITION
 
-# START_TRANSACTION: receive_leader
+# START_TRANSITION: receive_leader
 # PRE_CONDITION
 state['received_messages'] and state['received_messages'][0].startswith('leader ')
 # EFFECT
@@ -57,10 +57,10 @@ state['received_messages'] and state['received_messages'][0].startswith('leader 
 }
 # OUTPUT
 [[node_id, 'leader ' + str(state['leader'])] for node_id in state['output_neighbour_ids']]
-# END_TRANSACTION
+# END_TRANSITION
 
 
-# START_TRANSACTION: send_leader
+# START_TRANSITION: send_leader
 # PRE_CONDITION
 state['state'] == 'LEADER'
 # EFFECT
@@ -69,10 +69,10 @@ state['state'] == 'LEADER'
 }
 # OUTPUT
 [[node_id, 'leader ' + str(state['uid'])] for node_id in state['output_neighbour_ids']]
-# END_TRANSACTION
+# END_TRANSITION
 
 
-# START_TRANSACTION: visualize
+# START_TRANSITION: visualize
 # EFFECT
 {
     'label': 'uid: ' + str(state['uid']) +
@@ -81,4 +81,4 @@ state['state'] == 'LEADER'
              '\nstate: ' + str(state['state']),
     'color': '#cccccc' if state['state'] == 'UNKNOWN' else '#f7c7c7' if state['state'] == 'LEADER' else '#c7cff7',
 }
-# END_TRANSACTION
+# END_TRANSITION

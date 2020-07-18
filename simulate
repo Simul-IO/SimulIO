@@ -5,7 +5,7 @@ import argparse
 
 from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, ArbitraryGraph
 from simulio.simulator import SyncSimulator, SyncSimulatorWithUID, AsyncSimulator, AsyncSimulatorWithUID
-from simulio.transaction import parse
+from simulio.transition import parse
 
 UNIDIRECTIONAL_RING = 'UnidirectionalRing'
 BIDIRECTIONAL_RING = 'BidirectionalRing'
