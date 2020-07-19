@@ -7,7 +7,7 @@ Follow below instructions.
 2. Install dependencies using `pip install -r requirements.txt`
 3. Now you can run it with `./simulate` file. for example with:
 ```bash
-python simulate -a examples/automata/leader_election_automata.ioa -g UnidirectionalRing -n 10 -t SyncSimulatorWithUID > result.json
+python simulate -a examples/automata/leader_election_automata.ioa -g UnidirectionalRing -n 10 -t SyncSimulatorWithUID -o result.json
 ```
 4. Now, you can open Visualizer/index.html using web browser and drag and drop result.json to see visualization. (use left/right arrow keys to see next steps.)
 

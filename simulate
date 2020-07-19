@@ -17,7 +17,8 @@ SYNC_SIMULATOR_WITH_UID = 'SyncSimulatorWithUID'
 ASYNC_SIMULATOR = 'AsyncSimulator'
 ASYNC_SIMULATOR_WITH_UID = 'AsyncSimulatorWithUID'
 
-if __name__ == '__main__':
+
+def run_cli():
     parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph.')
     parser.add_argument('-a', '--automata', required=True,
                         help='Automata algorithm file')
@@ -32,14 +33,15 @@ if __name__ == '__main__':
                         choices=[SYNC_SIMULATOR, SYNC_SIMULATOR_WITH_UID, ASYNC_SIMULATOR_WITH_UID],
                         help='type of simulator(Sync, Sync-UID, Async-UID)'
                         )
+    parser.add_argument('-o', '--output', type=argparse.FileType('w'), default='-',
+                        help='Output file to write result to it.')
     parser.add_argument('-s', '--sleep', type=float, default=0.0,
                         help='Sleep for this number of seconds between steps')  # TODO
     args = parser.parse_args()
 
     with open(str(args.automata)) as f:
-        lines = f.readlines()
+        automata = parse(f.readlines())
 
-    graph = None
     if args.graph == UNIDIRECTIONAL_RING:
         graph = UnidirectionalRing(int(args.network_size))
     elif args.graph == BIDIRECTIONAL_RING:
@@ -49,19 +51,22 @@ if __name__ == '__main__':
     else:  # ARBITRARY_GRAPH
         graph = ArbitraryGraph(str(args.graph_file))
 
-    simulator = None
     if args.type == SYNC_SIMULATOR:
-        simulator = SyncSimulator(graph, parse(lines))
+        simulator = SyncSimulator(graph, automata)
     elif args.type == SYNC_SIMULATOR_WITH_UID:
-        simulator = SyncSimulatorWithUID(graph, parse(lines))
+        simulator = SyncSimulatorWithUID(graph, automata)
     elif args.type == ASYNC_SIMULATOR:
-        simulator = AsyncSimulator(graph, parse(lines))
+        simulator = AsyncSimulator(graph, automata)
     else:  # ASYNC_SIMULATOR_WITH_UID:
-        simulator = AsyncSimulatorWithUID(graph, parse(lines))
+        simulator = AsyncSimulatorWithUID(graph, automata)
 
     simulator.run()
 
-    print(json.dumps({
+    json.dump({
         'graph': simulator.graph.to_dict(),
         'steps': simulator.details,
-    }))
+    }, args.output)
+
+
+if __name__ == '__main__':
+    run_cli()
