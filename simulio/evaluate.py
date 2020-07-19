@@ -1,7 +1,13 @@
+import sys
 from copy import deepcopy
 
 import numpy as np
 from RestrictedPython import compile_restricted_function, safe_builtins, utility_builtins
+
+
+def print_to_stderr(*args, **kwargs):
+    kwargs['file'] = sys.stderr
+    return print(*args, *kwargs)
 
 
 def unsafe_exec(code, functions=None, names=None):
@@ -16,7 +22,8 @@ def unsafe_exec(code, functions=None, names=None):
     }
     safe_globals['__builtins__'].update(utility_builtins)
     safe_globals['__builtins__'].update({
-        'np': np
+        'np': np,
+        'print': print_to_stderr,
     })
     if functions:
         safe_globals['__builtins__'].update(functions)

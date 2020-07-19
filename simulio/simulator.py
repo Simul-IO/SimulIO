@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from random import shuffle
 
-from simulio.unsafe_exec import unsafe_exec
+from simulio.evaluate import unsafe_exec
 
 PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
