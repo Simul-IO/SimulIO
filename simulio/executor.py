@@ -10,7 +10,7 @@ def print_to_stderr(*args, **kwargs):
     return print(*args, *kwargs)
 
 
-def unsafe_exec(code, functions=None, names=None):
+def simple_exec(code, functions=None, names=None):
     if names is None:
         names = {}
     compiled_function = compile_restricted_function(','.join(names.keys()), code, 'f', policy=None)

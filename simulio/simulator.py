@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from random import shuffle
 
-from simulio.evaluate import unsafe_exec
+from simulio.executor import simple_exec
 
 PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
@@ -75,7 +75,7 @@ class BaseSimulator(ABC):
         }
 
     def _exec(self, code, args):
-        return unsafe_exec(code, names=args)
+        return simple_exec(code, names=args)
 
     def _translate_node_id_to_local_id(self, node_id, message_node_id):
         return self.neighbours[node_id]['reversed_receive'][message_node_id]
