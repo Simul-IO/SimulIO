@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from random import shuffle
 
-from simpleeval import EvalWithCompoundTypes
+from simulio.executor import simple_exec
 
 PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
@@ -29,7 +29,7 @@ class BaseSimulator(ABC):
             'states': {
                 node_id: {
                     'borderColor': '#ad8b0e' if active_nodes is None or node_id in active_nodes else '#cccccc',
-                    **self._eval(self.transitions['visualize'].effect, {
+                    **self._exec(self.transitions['visualize'].effect, {
                         'state': state,
                     })} for node_id, state in self.states.items()
             }
@@ -74,9 +74,8 @@ class BaseSimulator(ABC):
             'input_neighbour_ids': list(self.neighbours[node_id]['reversed_receive'].values()),
         }
 
-    def _eval(self, code, args):
-        evaluator = EvalWithCompoundTypes(names=args)
-        return evaluator.eval(code)
+    def _exec(self, code, args):
+        return simple_exec(code, names=args)
 
     def _translate_node_id_to_local_id(self, node_id, message_node_id):
         return self.neighbours[node_id]['reversed_receive'][message_node_id]
@@ -90,7 +89,7 @@ class BaseSimulator(ABC):
     def init_states(self):
         for node_id, current_state in self.states.items():
             if 'init' in self.transitions:
-                next_state = self._eval(self.transitions['init'].effect, {
+                next_state = self._exec(self.transitions['init'].effect, {
                     'state': current_state,
                     **self._get_initial_state(node_id),
                 })
@@ -103,7 +102,7 @@ class BaseSimulator(ABC):
         current_state = self.states[to_node_id]
         from_local_id = self._translate_node_id_to_local_id(to_node_id, from_node_id)
 
-        next_state = self._eval(self.transitions['receive'].effect, {
+        next_state = self._exec(self.transitions['receive'].effect, {
             'state': current_state,
             'from_node': from_local_id,
             'message': message,
@@ -113,7 +112,7 @@ class BaseSimulator(ABC):
 
     def _push_messages(self, node_id, transition_name):
         changed = False
-        messages = self._eval(self.transitions[transition_name].output, {
+        messages = self._exec(self.transitions[transition_name].output, {
             'state': self.states[node_id],
         })
 
@@ -126,13 +125,13 @@ class BaseSimulator(ABC):
     def _run_transition(self, node_id, transition_name):
         state = self.states[node_id]
         transition = self.transitions[transition_name]
-        is_satisfied = self._eval(transition.pre_condition, {
+        is_satisfied = self._exec(transition.pre_condition, {
             'state': state,
         })
         if not is_satisfied:
             return False
         changed = False
-        next_state = self._eval(transition.effect, {
+        next_state = self._exec(transition.effect, {
             'state': state,
         })
         if next_state:
