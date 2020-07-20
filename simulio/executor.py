@@ -1,7 +1,8 @@
 import sys
+import numpy as np
+import time
 from copy import deepcopy
 
-import numpy as np
 from RestrictedPython import compile_restricted_function, safe_builtins, utility_builtins
 
 
@@ -24,6 +25,7 @@ def simple_exec(code, functions=None, names=None):
     safe_globals['__builtins__'].update({
         'np': np,
         'print': print_to_stderr,
+        'time': time,
     })
     if functions:
         safe_globals['__builtins__'].update(functions)
