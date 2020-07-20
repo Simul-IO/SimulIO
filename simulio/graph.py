@@ -95,7 +95,12 @@ def parse_graph_file(graph_file):
         elif line.startswith(EDGES):
             reader_state = EDGES
         elif reader_state == NODES and line != '\n':
-            nodes.append(Node(int(line[1:])))
+            s = line.split(' ')
+            if len(s) > 1 and s[1].startswith('Byz'):
+                properties = {'byzantine': int(s[1][3:])}
+                nodes.append(Node(int(s[0][1:]), properties))
+            else:
+                nodes.append(Node(int(line[1:])))
         elif reader_state == EDGES and line != '\n':
             s = line.split('->')
             from_node_id = int(s[0].strip()[1:])
