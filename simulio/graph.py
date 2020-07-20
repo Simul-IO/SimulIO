@@ -64,6 +64,21 @@ class BidirectionalRing(Graph):
         super().__init__(nodes, edges)
 
 
+class KRegularRing(Graph):
+    def __init__(self, n, k):
+        nodes = []
+        edges = []
+        edges_set = set()
+        for i in range(n):
+            nodes.append(Node(i))
+            for j in range(1, k + 1):
+                edges_set.add((i, (i + j) % n))
+                edges_set.add((i, (i + n - j) % n))
+        for edge in edges_set:
+            edges.append(Edge(edge[0], edge[1]))
+        super().__init__(nodes, edges)
+
+
 class CompleteGraph(Graph):
     def __init__(self, n):
         nodes = []
