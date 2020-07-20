@@ -14,7 +14,10 @@ class BaseSimulator(ABC):
         self.transitions = transitions
 
         self.states = {
-            node.id: {'alive': True} for node in self.graph.nodes
+            node.id: {
+                'id': node.id,
+                'alive': True,
+            } for node in self.graph.nodes
         }
         self.neighbours = {
             node.id: self._make_local_neighbours(node.id) for node in graph.nodes
@@ -70,6 +73,7 @@ class BaseSimulator(ABC):
 
     def _get_initial_state(self, node_id):
         return {
+            'network_size': len(self.graph.nodes),
             'output_neighbour_ids': list(self.neighbours[node_id]['send'].keys()),
             'input_neighbour_ids': list(self.neighbours[node_id]['reversed_receive'].values()),
         }
@@ -146,37 +150,7 @@ class BaseSimulator(ABC):
         pass
 
 
-class SyncSimulator(BaseSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
-
-    def _receive_messages(self, active_nodes):
-        messages = deepcopy(self.send_queue)
-        self.send_queue.clear()
-        for from_node_id, to_node_id, message in messages:
-            self._receive(from_node_id, to_node_id, message)
-            active_nodes.add(to_node_id)
-
-    def run(self):
-
-        self._add_to_details()
-        round_number = 0
-        while self._is_alive():
-            active_nodes = set()
-            self._receive_messages(active_nodes)
-            for node_id in self.states:
-                if not self.states[node_id]['alive']:
-                    continue
-                for transition_name in self.transitions:
-                    if transition_name in PREDEFINED_TRANSITIONS:
-                        continue
-                    if self._run_transition(node_id, transition_name):
-                        active_nodes.add(node_id)
-            self._add_to_details(active_nodes)
-            round_number += 1
-
-
-class SyncSimulatorWithUID(SyncSimulator):
+class RandomUIDSimulator(BaseSimulator, ABC):
     def __init__(self, graph, transitions):
         uids = set()
         while len(uids) < len(graph.nodes):
@@ -196,20 +170,56 @@ class SyncSimulatorWithUID(SyncSimulator):
         }
 
 
-class AsyncSimulator(BaseSimulator):
+class SyncSimulator(BaseSimulator):
     def __init__(self, graph, transitions):
         super().__init__(graph, transitions)
 
     def _receive_messages(self, active_nodes):
-        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
-            random_index = random.randint(0, len(self.send_queue) - 1)
-            new_messages = []
-            new_messages.extend(self.send_queue[:random_index])
-            new_messages.extend(self.send_queue[random_index + 1:])
+        messages = deepcopy(self.send_queue)
+        self.send_queue.clear()
+        for from_node_id, to_node_id, message in messages:
+            self._receive(from_node_id, to_node_id, message)
+            active_nodes.add(to_node_id)
 
-            self._receive(*self.send_queue[random_index])
-            active_nodes.add(self.send_queue[random_index][1])
-            self.send_queue = new_messages
+    def run(self):
+        self._add_to_details()
+        round_number = 0
+        while self._is_alive():
+            active_nodes = set()
+            self._receive_messages(active_nodes)
+            for node_id in self.states:
+                if not self.states[node_id]['alive']:
+                    continue
+                for transition_name in self.transitions:
+                    if transition_name in PREDEFINED_TRANSITIONS:
+                        continue
+                    if self._run_transition(node_id, transition_name):
+                        active_nodes.add(node_id)
+            self._add_to_details(active_nodes)
+            round_number += 1
+
+
+class SyncSimulatorWithRandomUID(SyncSimulator, RandomUIDSimulator):
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
+
+
+class AsyncSimulator(BaseSimulator):
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
+
+    def _receive_index(self, index, active_nodes):
+        new_messages = []
+        new_messages.extend(self.send_queue[:index])
+        new_messages.extend(self.send_queue[index + 1:])
+
+        self._receive(*self.send_queue[index])
+        active_nodes.add(self.send_queue[index][1])
+        self.send_queue = new_messages
+
+    def _receive_messages(self, active_nodes):
+        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
+            self._receive_index(random.randint(0, len(self.send_queue) - 1), active_nodes)
             return True
         return False
 
@@ -231,21 +241,37 @@ class AsyncSimulator(BaseSimulator):
                 self._add_to_details(active_nodes)
 
 
-class AsyncSimulatorWithUID(AsyncSimulator):
+class AsyncSimulatorWithRandomUID(AsyncSimulator, RandomUIDSimulator):
     def __init__(self, graph, transitions):
-        uids = set()
-        while len(uids) < len(graph.nodes):
-            uids.add(random.randint(1, len(graph.nodes) ** 2))
-        uids = list(uids)
-        shuffle(uids)
-        self.uids = {}
-        for i, node in enumerate(graph.nodes):
-            self.uids[node.id] = uids[i]
-
         super().__init__(graph, transitions)
 
-    def _get_initial_state(self, node_id):
-        return {
-            'uid': self.uids[node_id],
-            **super()._get_initial_state(node_id),
-        }
+
+class FIFOAsyncSimulator(AsyncSimulator):
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
+
+    def _receive_messages(self, active_nodes):
+        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
+            random_node = random.choice(self.graph.nodes).id
+            random_index = None
+            for i, (from_node_id, to_node_id, message) in enumerate(self.send_queue):
+                if to_node_id == random_node:
+                    random_index = i
+                    break
+
+            if random_index is None:
+                return False
+
+            self._receive_index(random_index, active_nodes)
+            return True
+        return False
+
+
+class OrderedAsyncSimulator(FIFOAsyncSimulator):
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
+
+
+class OrderedAsyncSimulatorWithRandomUID(RandomUIDSimulator, FIFOAsyncSimulator):
+    def __init__(self, graph, transitions):
+        super().__init__(graph, transitions)
