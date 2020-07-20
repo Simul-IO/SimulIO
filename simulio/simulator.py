@@ -9,7 +9,7 @@ PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
 
 class BaseSimulator(ABC):
-    def __init__(self, graph, transitions):
+    def __init__(self, graph, transitions, link_failure_prob):
         self.graph = graph
         self.transitions = transitions
 
@@ -24,6 +24,8 @@ class BaseSimulator(ABC):
         }
         self.send_queue = []
         self.details = []
+        self.link_failure_prob = float(link_failure_prob)  # The probability that each message can be lost
+
         self.init_states()
 
     def _add_to_details(self, active_nodes=None):
@@ -121,6 +123,8 @@ class BaseSimulator(ABC):
         })
 
         for to_local_id, message in messages:
+            if random.random() < self.link_failure_prob:
+                continue
             changed = True
             to_node_id = self.neighbours[node_id]['send'][to_local_id]
             self.send_queue.append((node_id, to_node_id, message))
@@ -151,7 +155,7 @@ class BaseSimulator(ABC):
 
 
 class RandomUIDSimulator(BaseSimulator, ABC):
-    def __init__(self, graph, transitions):
+    def __init__(self, graph, transitions, link_failure_prob):
         uids = set()
         while len(uids) < len(graph.nodes):
             uids.add(random.randint(1, len(graph.nodes) ** 2))
@@ -161,7 +165,7 @@ class RandomUIDSimulator(BaseSimulator, ABC):
         for i, node in enumerate(graph.nodes):
             self.uids[node.id] = uids[i]
 
-        super().__init__(graph, transitions)
+        BaseSimulator.__init__(self, graph, transitions, link_failure_prob)
 
     def _get_initial_state(self, node_id):
         return {
@@ -171,8 +175,9 @@ class RandomUIDSimulator(BaseSimulator, ABC):
 
 
 class SyncSimulator(BaseSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        self.limit_steps = limit_steps
+        BaseSimulator.__init__(self, graph, transitions, link_failure_prob)
 
     def _receive_messages(self, active_nodes):
         messages = deepcopy(self.send_queue)
@@ -185,6 +190,8 @@ class SyncSimulator(BaseSimulator):
         self._add_to_details()
         round_number = 0
         while self._is_alive():
+            if self.limit_steps is not None and round_number >= self.limit_steps:
+                break
             active_nodes = set()
             self._receive_messages(active_nodes)
             for node_id in self.states:
@@ -200,13 +207,15 @@ class SyncSimulator(BaseSimulator):
 
 
 class SyncSimulatorWithRandomUID(SyncSimulator, RandomUIDSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        RandomUIDSimulator.__init__(self, graph, transitions, link_failure_prob)
+        SyncSimulator.__init__(self, graph, transitions, limit_steps, link_failure_prob)
 
 
 class AsyncSimulator(BaseSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        self.limit_steps = limit_steps
+        BaseSimulator.__init__(self, graph, transitions, link_failure_prob)
 
     def _receive_index(self, index, active_nodes):
         new_messages = []
@@ -225,10 +234,14 @@ class AsyncSimulator(BaseSimulator):
 
     def run(self):
         self._add_to_details()
+        steps = 0
         while self._is_alive():
+            if self.limit_steps is not None and steps >= self.limit_steps:
+                break
             active_nodes = set()
             if self._receive_messages(active_nodes):
                 self._add_to_details(active_nodes)
+                steps += 1
                 continue
             node_id = random.choice(list(self.states.keys()))
             if not self.states[node_id]['alive']:
@@ -239,16 +252,18 @@ class AsyncSimulator(BaseSimulator):
             if self._run_transition(node_id, transition_name):
                 active_nodes.add(node_id)
                 self._add_to_details(active_nodes)
+            steps += 1
 
 
 class AsyncSimulatorWithRandomUID(AsyncSimulator, RandomUIDSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        RandomUIDSimulator.__init__(self, graph, transitions, link_failure_prob)
+        AsyncSimulator.__init__(self, graph, transitions, limit_steps, link_failure_prob)
 
 
 class FIFOAsyncSimulator(AsyncSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        AsyncSimulator.__init__(self, graph, transitions, limit_steps, link_failure_prob)
 
     def _receive_messages(self, active_nodes):
         if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
@@ -268,10 +283,11 @@ class FIFOAsyncSimulator(AsyncSimulator):
 
 
 class OrderedAsyncSimulator(FIFOAsyncSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        FIFOAsyncSimulator.__init__(self, graph, transitions, limit_steps, link_failure_prob)
 
 
 class OrderedAsyncSimulatorWithRandomUID(RandomUIDSimulator, FIFOAsyncSimulator):
-    def __init__(self, graph, transitions):
-        super().__init__(graph, transitions)
+    def __init__(self, graph, transitions, limit_steps, link_failure_prob):
+        RandomUIDSimulator.__init__(self, graph, transitions, link_failure_prob)
+        FIFOAsyncSimulator.__init__(self, graph, transitions, limit_steps, link_failure_prob)
