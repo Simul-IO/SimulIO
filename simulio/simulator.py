@@ -20,12 +20,14 @@ class BaseSimulator(ABC):
             node.id: self._make_local_neighbours(node.id) for node in graph.nodes
         }
         self.send_queue = []
+        self.total_messages = 0
         self.details = []
         self.init_states()
 
     def _add_to_details(self, active_nodes=None):
         self.details.append({
             'send_messages': deepcopy(self.send_queue),
+            'total_messages': self.total_messages,
             'states': {
                 node_id: {
                     'borderColor': '#ad8b0e' if active_nodes is None or node_id in active_nodes else '#cccccc',
@@ -120,6 +122,7 @@ class BaseSimulator(ABC):
             changed = True
             to_node_id = self.neighbours[node_id]['send'][to_local_id]
             self.send_queue.append((node_id, to_node_id, message))
+            self.total_messages += 1
         return changed
 
     def _run_transition(self, node_id, transition_name):
@@ -175,6 +178,8 @@ class SyncSimulator(BaseSimulator):
             self._add_to_details(active_nodes)
             round_number += 1
 
+        print("Total Messages: ", self.total_messages)
+
 
 class SyncSimulatorWithUID(SyncSimulator):
     def __init__(self, graph, transitions):
@@ -229,6 +234,8 @@ class AsyncSimulator(BaseSimulator):
             if self._run_transition(node_id, transition_name):
                 active_nodes.add(node_id)
                 self._add_to_details(active_nodes)
+
+        print("Total Messages: ", self.total_messages)
 
 
 class AsyncSimulatorWithUID(AsyncSimulator):
