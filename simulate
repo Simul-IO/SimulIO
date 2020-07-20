@@ -4,7 +4,8 @@ import json
 import argparse
 import sys
 
-from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, BipartiteGraph, ArbitraryGraph
+from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, BipartiteGraph, StarGraph, \
+    ArbitraryGraph
 from simulio.simulator import SyncSimulator, SyncSimulatorWithRandomUID, AsyncSimulator, AsyncSimulatorWithRandomUID, \
     OrderedAsyncSimulator, OrderedAsyncSimulatorWithRandomUID
 from simulio.transition import parse
@@ -13,6 +14,7 @@ UNIDIRECTIONAL_RING = 'unidirectionalRing'
 BIDIRECTIONAL_RING = 'bidirectionalRing'
 COMPLETE_GRAPH = 'complete'
 BIPARTITE_GRAPH = 'bipartite'
+STAR_GRAPH = 'star'
 ARBITRARY_GRAPH = 'arbitrary'
 
 SYNC = "sync"
@@ -27,7 +29,7 @@ def run_cli():
     parser.add_argument('-a', '--automata', required=True,
                         help='Automata algorithm file')
     parser.add_argument('-g', '--graph', required=True, nargs='+',
-                        metavar=('unidirectionalRing, bidirectionalRing, complete, bipartite, arbitrary',
+                        metavar=('unidirectionalRing, bidirectionalRing, complete, bipartite, star, arbitrary',
                                  'SIZE, M N, GRAPH_FILE'),
                         help='Simulate the automaton operating on GRAPH')
     parser.add_argument('-t', '--type',
@@ -67,6 +69,8 @@ def run_cli():
         graph = CompleteGraph(int(args.graph[1]))
     elif graph_type == BIPARTITE_GRAPH:
         graph = BipartiteGraph(int(args.graph[1]), int(args.graph[2]))
+    elif graph_type == STAR_GRAPH:
+        graph = StarGraph(int(args.graph[1]))
     else:  # ARBITRARY_GRAPH
         graph = ArbitraryGraph(str(args.graph[1]))
 

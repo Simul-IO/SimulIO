@@ -86,6 +86,20 @@ class BipartiteGraph(Graph):
         super().__init__(nodes, edges)
 
 
+class StarGraph(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            if i != 0:
+                edges.append(Edge(0, i))
+                edges.append(Edge(i, 0))
+
+        super().__init__(nodes, edges)
+
+
+
 class ArbitraryGraph(Graph):
     def __init__(self, graph_file):
         nodes, edges = parse_graph_file(graph_file)
