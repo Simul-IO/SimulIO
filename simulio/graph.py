@@ -1,3 +1,6 @@
+import random
+
+
 class Node:
     def __init__(self, id, properties=None):
         self.id = id
@@ -98,6 +101,24 @@ class StarGraph(Graph):
 
         super().__init__(nodes, edges)
 
+
+class RandomGraph(Graph):
+    def __init__(self, n, m):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+        edges_set = set()
+        while len(edges_set) < 2 * m:
+            random_index_1 = random.randint(0, n - 1)
+            random_index_2 = random.randint(0, n - 1)
+            if random_index_1 == random_index_2:
+                continue
+            edges_set.add((random_index_1, random_index_2))
+            edges_set.add((random_index_2, random_index_1))
+        for edge in edges_set:
+            edges.append(Edge(edge[0], edge[1]))
+        super().__init__(nodes, edges)
 
 
 class ArbitraryGraph(Graph):
