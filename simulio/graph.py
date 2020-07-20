@@ -73,6 +73,19 @@ class CompleteGraph(Graph):
         super().__init__(nodes, edges)
 
 
+class BipartiteGraph(Graph):
+    def __init__(self, n, m):
+        nodes = []
+        edges = []
+        for i in range(n + m):
+            nodes.append(Node(i))
+        for i in range(n):
+            for j in range(n, n + m):
+                edges.append(Edge(i, j))
+                edges.append(Edge(j, i))
+        super().__init__(nodes, edges)
+
+
 class ArbitraryGraph(Graph):
     def __init__(self, graph_file):
         nodes, edges = parse_graph_file(graph_file)
