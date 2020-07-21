@@ -145,15 +145,23 @@ class BaseSimulator(ABC):
             self.total_messages += 1
         return changed
 
-    def _run_transition(self, node_id, transition_name):
+    def _is_transition_feasible(self, node_id, transition_name):
         state = self.states[node_id]
         transition = self.transitions[node_id][transition_name]
 
         is_satisfied = self._exec(transition.pre_condition, {
             'state': state,
         })
-        if not is_satisfied:
+
+        return is_satisfied
+
+    def _run_transition(self, node_id, transition_name):
+        if not self._is_transition_feasible(node_id, transition_name):
             return False
+
+        state = self.states[node_id]
+        transition = self.transitions[node_id][transition_name]
+
         changed = False
         next_state = self._exec(transition.effect, {
             'state': state,
@@ -251,7 +259,7 @@ class AsyncSimulator(BaseSimulator):
         self.send_queue = new_messages
 
     def _receive_messages(self, active_nodes):
-        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
+        if len(self.send_queue) > 0:
             self._receive_index(random.randint(0, len(self.send_queue) - 1), active_nodes)
             return True
         return False
@@ -262,21 +270,27 @@ class AsyncSimulator(BaseSimulator):
         while self._is_alive():
             if self.limit_steps is not None and steps >= self.limit_steps:
                 break
+            next_actions = list()
             active_nodes = set()
-            if self._receive_messages(active_nodes):
-                self._add_to_details(active_nodes)
-                steps += 1
-                continue
-            node_id = random.choice(list(self.states.keys()))
-            if not self.states[node_id]['alive']:
-                continue
-            transition_name = random.choice(list(self.transitions[node_id].keys()))
-            if transition_name in ['init', 'receive', 'visualize']:
-                continue
-            if self._run_transition(node_id, transition_name):
-                active_nodes.add(node_id)
-                self._add_to_details(active_nodes)
-            steps += 1
+            for i in range(len(self.send_queue)):
+                next_actions.append(('receive_message',))
+            for node_id in self.states:
+                for transition_name in self.transitions[node_id]:
+                    if transition_name in PREDEFINED_TRANSITIONS:
+                        continue
+                    if self._is_transition_feasible(node_id, transition_name):
+                        next_actions.append(('run_transaction', node_id, transition_name))
+
+            next_action = random.choice(next_actions)
+            if next_action[0] == 'receive_message':
+                if self._receive_messages(active_nodes):
+                    self._add_to_details(active_nodes)
+                    steps += 1
+            elif next_action[0] == 'run_transaction':
+                if self._run_transition(next_action[1], next_action[2]):
+                    active_nodes.add(next_action[1])
+                    self._add_to_details(active_nodes)
+                    steps += 1
 
         print("Total Messages: ", self.total_messages)
 
@@ -292,7 +306,7 @@ class FIFOAsyncSimulator(AsyncSimulator):
         AsyncSimulator.__init__(self, graph, main_transitions, byzantine_transitions, limit_steps, link_failure_prob)
 
     def _receive_messages(self, active_nodes):
-        if len(self.send_queue) > 0 and random.randint(0, len(self.graph.nodes)) == 0:
+        if len(self.send_queue) > 0:
             random_node = random.choice(self.graph.nodes).id
             random_index = None
             for i, (from_node_id, to_node_id, message) in enumerate(self.send_queue):
