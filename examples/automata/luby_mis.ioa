@@ -21,6 +21,7 @@ return {
     'send_rand_message': False,
     'selected_false_nbrs': [],
     'alive': True,
+    'phase': 1,
 }
 # OUTPUT
 return [[node_id, 'rand ' + str(state['rand'])] for node_id in state['output_neighbour_ids']]
@@ -131,12 +132,14 @@ if len(state['received_eliminated_msgs']) == len(state['input_neighbour_ids']):
         state['alive'] = False
     else:
         state['rand'] = random.randint(1, state['random_limit'])
+        state['phase'] = state['phase'] + 1
     return {
         'output_neighbour_ids': state['output_neighbour_ids'],
         'input_neighbour_ids': state['input_neighbour_ids'],
         'rand': state['rand'],
         'selected': state['selected'],
         'alive': state['alive'],
+        'phase': state['phase'],
         'send_rand_message': state['send_rand_message'],
         'received_eliminated_msgs': state['received_eliminated_msgs'],
         'received_messages': state['received_messages'],

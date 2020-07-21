@@ -4,6 +4,7 @@ from copy import deepcopy
 from random import shuffle
 
 from simulio.executor import simple_exec
+from simulio.memory_usage_calculator import get_memory_size
 
 PREDEFINED_TRANSITIONS = ['init', 'receive', 'visualize']
 
@@ -22,6 +23,15 @@ class BaseSimulator(ABC):
         }
         self.send_queue = []
         self.total_messages = 0
+        self.total_send_messages_by_node = {
+            node.id: 0 for node in self.graph.nodes
+        }
+        self.total_received_messages_by_node = {
+            node.id: 0 for node in self.graph.nodes
+        }
+        self.max_memory_by_node = {
+            node.id: 0 for node in self.graph.nodes
+        }
         self.details = []
         self.link_failure_prob = float(link_failure_prob)  # The probability that each message can be lost
 
@@ -114,6 +124,8 @@ class BaseSimulator(ABC):
                 state.update(next_state)
                 self.states[node_id] = state
                 self._push_messages(node_id, 'init')
+                self.max_memory_by_node[node_id] = max(get_memory_size(self.states[node_id]),
+                                                       self.max_memory_by_node[node_id])
 
     def _receive(self, from_node_id, to_node_id, message):
         current_state = self.states[to_node_id]
@@ -126,7 +138,10 @@ class BaseSimulator(ABC):
             'message': message,
         })
         self.states[to_node_id].update(next_state)
+        self.total_received_messages_by_node[to_node_id] += 1
         self._push_messages(to_node_id, 'receive')
+        self.max_memory_by_node[to_node_id] = max(get_memory_size(self.states[to_node_id]),
+                                                  self.max_memory_by_node[to_node_id])
 
     def _push_messages(self, node_id, transition_name):
         changed = False
@@ -143,6 +158,7 @@ class BaseSimulator(ABC):
             to_node_id = self.neighbours[node_id]['send'][to_local_id]
             self.send_queue.append((node_id, to_node_id, message))
             self.total_messages += 1
+            self.total_send_messages_by_node[node_id] += 1
         return changed
 
     def _run_transition(self, node_id, transition_name):
@@ -161,9 +177,28 @@ class BaseSimulator(ABC):
         if next_state:
             changed = True
         self.states[node_id].update(next_state)
+        self.max_memory_by_node[node_id] = max(get_memory_size(self.states[node_id]),
+                                               self.max_memory_by_node[node_id])
         if self._push_messages(node_id, transition_name):
             changed = True
         return changed
+
+    def _get_mean_messages_per_node(self):
+        sum_send_msg = 0
+        sum_recv_msg = 0
+        for node_id in self.states:
+            sum_send_msg += self.total_send_messages_by_node[node_id]
+            sum_recv_msg += self.total_received_messages_by_node[node_id]
+        mean_send = sum_send_msg / len(self.graph.nodes)
+        mean_recv = sum_recv_msg / len(self.graph.nodes)
+        return mean_send, mean_recv
+
+    def _get_max_memory_used_by_node(self):
+        max_used = 0
+        for node_id in self.states:
+            if self.max_memory_by_node[node_id] > max_used:
+                max_used = self.max_memory_by_node[node_id]
+        return max_used
 
     @abstractmethod
     def run(self):
@@ -227,7 +262,12 @@ class SyncSimulator(BaseSimulator):
             self._add_to_details(active_nodes, with_messages=True)
             round_number += 1
 
+        mean_send_messages, mean_received_messages = self._get_mean_messages_per_node()
+        print("Rounds: ", round_number)
         print("Total Messages: ", self.total_messages)
+        print("Mean Send Messages: ", mean_send_messages)
+        print("Mean Recv Messages: ", mean_received_messages)
+        print("Max Memory Used By node: ", self._get_max_memory_used_by_node())
 
 
 class SyncSimulatorWithRandomUID(SyncSimulator, RandomUIDSimulator):
@@ -256,6 +296,13 @@ class AsyncSimulator(BaseSimulator):
             return True
         return False
 
+    def _get_phase(self):
+        max_phase = 0
+        for node_id in self.states:
+            if self.states[node_id]['phase'] > max_phase:
+                max_phase = self.states[node_id]['phase']
+        return max_phase
+
     def run(self):
         self._add_to_details()
         steps = 0
@@ -278,7 +325,12 @@ class AsyncSimulator(BaseSimulator):
                 self._add_to_details(active_nodes)
             steps += 1
 
+        mean_send_messages, mean_received_messages = self._get_mean_messages_per_node()
+        print("Phases: ", self._get_phase())
         print("Total Messages: ", self.total_messages)
+        print("Mean Send Messages: ", mean_send_messages)
+        print("Mean Recv Messages: ", mean_received_messages)
+        print("Max Memory Used By node: ", self._get_max_memory_used_by_node())
 
 
 class AsyncSimulatorWithRandomUID(AsyncSimulator, RandomUIDSimulator):
