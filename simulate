@@ -4,15 +4,21 @@ import json
 import argparse
 import sys
 
-from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, ArbitraryGraph
+from simulio.graph import UnidirectionalRing, BidirectionalRing, KRegularRing, CompleteGraph, BipartiteGraph, \
+    StarGraph, BinaryGraph, RandomGraph, ArbitraryGraph
 from simulio.simulator import SyncSimulator, SyncSimulatorWithRandomUID, AsyncSimulator, AsyncSimulatorWithRandomUID, \
     OrderedAsyncSimulator, OrderedAsyncSimulatorWithRandomUID
 from simulio.transition import parse
 
-UNIDIRECTIONAL_RING = 'UnidirectionalRing'
-BIDIRECTIONAL_RING = 'BidirectionalRing'
-COMPLETE_GRAPH = 'CompleteGraph'
-ARBITRARY_GRAPH = 'Arbitrary'
+UNIDIRECTIONAL_RING = 'unidirectional-ring'
+BIDIRECTIONAL_RING = 'bidirectional-ring'
+K_REGULAR_RING = 'k-regular-ring'
+COMPLETE_GRAPH = 'complete'
+BIPARTITE_GRAPH = 'bipartite'
+STAR_GRAPH = 'star'
+BINARY_GRAPH = 'binary'
+RANDOM_GRAPH = 'random'
+ARBITRARY_GRAPH = 'arbitrary'
 
 SYNC = "sync"
 ASYNC = "async"
@@ -25,13 +31,11 @@ def run_cli():
     parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph')
     parser.add_argument('-a', '--automata', required=True,
                         help='Automata algorithm file')
-    parser.add_argument('-g', '--graph', required=True,
-                        choices=[UNIDIRECTIONAL_RING, BIDIRECTIONAL_RING, COMPLETE_GRAPH, ARBITRARY_GRAPH],
+    parser.add_argument('-g', '--graph', required=True, nargs='+',
+                        metavar=('unidirectional-ring, bidirectional-ring, k-regular-ring(N,K), complete,'
+                                 ' bipartite(N,M), star, binary, random(N nodes M edges), arbitrary'
+                                 'SIZE, N M, GRAPH_FILE'),
                         help='Simulate the automaton operating on GRAPH')
-    parser.add_argument('-n', '--network-size',
-                        help="For Uni/BidirectionalRing and CompleteGraph must specify network size")
-    parser.add_argument('-gf', '--graph-file',
-                        help='For Arbitrary graph, give a graph file definition')
     parser.add_argument('-t', '--type',
                         choices=[SYNC, ASYNC, ORDERED_ASYNC],
                         help='type of simulator(sync, async, ordered-async)')
@@ -60,14 +64,25 @@ def run_cli():
             with open(str(file)) as f:
                 byzantine_automatons.append(parse(f.readlines()))
 
-    if args.graph == UNIDIRECTIONAL_RING:
-        graph = UnidirectionalRing(int(args.network_size))
-    elif args.graph == BIDIRECTIONAL_RING:
-        graph = BidirectionalRing(int(args.network_size))
-    elif args.graph == COMPLETE_GRAPH:
-        graph = CompleteGraph(int(args.network_size))
+    graph_type = args.graph[0]
+    if graph_type == UNIDIRECTIONAL_RING:
+        graph = UnidirectionalRing(int(args.graph[1]))
+    elif graph_type == BIDIRECTIONAL_RING:
+        graph = BidirectionalRing(int(args.graph[1]))
+    elif graph_type == COMPLETE_GRAPH:
+        graph = CompleteGraph(int(args.graph[1]))
+    elif graph_type == BIPARTITE_GRAPH:
+        graph = BipartiteGraph(int(args.graph[1]), int(args.graph[2]))
+    elif graph_type == STAR_GRAPH:
+        graph = StarGraph(int(args.graph[1]))
+    elif graph_type == RANDOM_GRAPH:
+        graph = RandomGraph(int(args.graph[1]), int(args.graph[2]))
+    elif graph_type == K_REGULAR_RING:
+        graph = KRegularRing(int(args.graph[1]), int(args.graph[2]))
+    elif graph_type == BINARY_GRAPH:
+        graph = BinaryGraph(int(args.graph[1]))
     else:  # ARBITRARY_GRAPH
-        graph = ArbitraryGraph(str(args.graph_file))
+        graph = ArbitraryGraph(str(args.graph[1]))
 
     limit = args.limit
     if args.link_failure != 0 and args.limit is None:  # TODO node failure

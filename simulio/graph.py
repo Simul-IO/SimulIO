@@ -1,3 +1,6 @@
+import random
+
+
 class Node:
     def __init__(self, id, properties=None):
         self.id = id
@@ -61,6 +64,21 @@ class BidirectionalRing(Graph):
         super().__init__(nodes, edges)
 
 
+class KRegularRing(Graph):
+    def __init__(self, n, k):
+        nodes = []
+        edges = []
+        edges_set = set()
+        for i in range(n):
+            nodes.append(Node(i))
+            for j in range(1, k + 1):
+                edges_set.add((i, (i + j) % n))
+                edges_set.add((i, (i + n - j) % n))
+        for edge in edges_set:
+            edges.append(Edge(edge[0], edge[1]))
+        super().__init__(nodes, edges)
+
+
 class CompleteGraph(Graph):
     def __init__(self, n):
         nodes = []
@@ -70,6 +88,63 @@ class CompleteGraph(Graph):
             for j in range(n):
                 if i != j:
                     edges.append(Edge(i, j))
+        super().__init__(nodes, edges)
+
+
+class BipartiteGraph(Graph):
+    def __init__(self, n, m):
+        nodes = []
+        edges = []
+        for i in range(n + m):
+            nodes.append(Node(i))
+        for i in range(n):
+            for j in range(n, n + m):
+                edges.append(Edge(i, j))
+                edges.append(Edge(j, i))
+        super().__init__(nodes, edges)
+
+
+class StarGraph(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            if i != 0:
+                edges.append(Edge(0, i))
+                edges.append(Edge(i, 0))
+
+        super().__init__(nodes, edges)
+
+
+class BinaryGraph(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            if (i + 1) // 2 > 0:
+                edges.append(Edge(i, ((i + 1) // 2) - 1))
+                edges.append(Edge(((i + 1) // 2) - 1, i))
+        super().__init__(nodes, edges)
+
+
+class RandomGraph(Graph):
+    def __init__(self, n, m):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+        edges_set = set()
+        while len(edges_set) < 2 * m:
+            random_index_1 = random.randint(0, n - 1)
+            random_index_2 = random.randint(0, n - 1)
+            if random_index_1 == random_index_2:
+                continue
+            edges_set.add((random_index_1, random_index_2))
+            edges_set.add((random_index_2, random_index_1))
+        for edge in edges_set:
+            edges.append(Edge(edge[0], edge[1]))
         super().__init__(nodes, edges)
 
 
