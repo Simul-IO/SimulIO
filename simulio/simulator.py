@@ -28,9 +28,9 @@ class BaseSimulator(ABC):
         self.transitions = self._initialize_transitions(main_transitions, byzantine_transitions)
         self.init_states()
 
-    def _add_to_details(self, active_nodes=None):
+    def _add_to_details(self, active_nodes=None, with_messages=True):
         self.details.append({
-            'send_messages': deepcopy(self.send_queue),
+            'send_messages': deepcopy(self.send_queue) if with_messages else [],
             'total_messages': self.total_messages,
             'states': {
                 node_id: {
@@ -203,7 +203,8 @@ class SyncSimulator(BaseSimulator):
             active_nodes.add(to_node_id)
 
     def run(self):
-        self._add_to_details()
+        self._add_to_details(with_messages=False)
+        self._add_to_details(with_messages=True)
         round_number = 0
         while self._is_alive():
             if self.limit_steps is not None and round_number >= self.limit_steps:
@@ -211,14 +212,19 @@ class SyncSimulator(BaseSimulator):
             active_nodes = set()
             self._receive_messages(active_nodes)
             for node_id in self.states:
-                if not self.states[node_id]['alive']:
-                    continue
-                for transition_name in self.transitions[node_id]:
-                    if transition_name in PREDEFINED_TRANSITIONS:
+                has_active_transaction = True
+                while has_active_transaction:
+                    has_active_transaction = False
+                    if not self.states[node_id]['alive']:
                         continue
-                    if self._run_transition(node_id, transition_name):
-                        active_nodes.add(node_id)
-            self._add_to_details(active_nodes)
+                    for transition_name in self.transitions[node_id]:
+                        if transition_name in PREDEFINED_TRANSITIONS:
+                            continue
+                        if self._run_transition(node_id, transition_name):
+                            has_active_transaction = True
+                            active_nodes.add(node_id)
+            self._add_to_details(active_nodes, with_messages=False)
+            self._add_to_details(active_nodes, with_messages=True)
             round_number += 1
 
         print("Total Messages: ", self.total_messages)
