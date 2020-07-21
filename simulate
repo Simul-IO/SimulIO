@@ -3,6 +3,7 @@
 import json
 import argparse
 import sys
+from datetime import datetime
 
 from simulio.graph import UnidirectionalRing, BidirectionalRing, KRegularRing, CompleteGraph, BipartiteGraph, \
     StarGraph, BinaryGraph, RandomGraph, ArbitraryGraph
@@ -28,6 +29,7 @@ DEFAULT_LIMIT = 10000
 
 
 def run_cli():
+    start_time = datetime.now()
     parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph')
     parser.add_argument('-a', '--automata', required=True,
                         help='Automata algorithm file')
@@ -90,6 +92,7 @@ def run_cli():
 
     link_failure_prob = float(args.link_failure)
 
+    simulator = None
     if args.type == SYNC:
         if args.random_ids:
             simulator = SyncSimulatorWithRandomUID(graph, automata, byzantine_automatons, limit, link_failure_prob)
@@ -113,6 +116,7 @@ def run_cli():
         'graph': simulator.graph.to_dict(),
         'steps': simulator.details,
     }, args.output)
+    print(f'Total simulation took {(datetime.now() - start_time).total_seconds()} seconds.', file=sys.stderr)
 
 
 if __name__ == '__main__':
