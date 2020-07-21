@@ -22,7 +22,7 @@ DEFAULT_LIMIT = 10000
 
 
 def run_cli():
-    parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph.')
+    parser = argparse.ArgumentParser(description='Simulate I/O automata on given Graph')
     parser.add_argument('-a', '--automata', required=True,
                         help='Automata algorithm file')
     parser.add_argument('-g', '--graph', required=True,
@@ -38,19 +38,27 @@ def run_cli():
     parser.add_argument('-r', '--random-ids', action='store_true',
                         help="Generate random uids for graph nodes")
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default='-',
-                        help='Output file to write result to it.')
+                        help='Output file to write result to it')
+    parser.add_argument('-b', '--byzantine', nargs='+', metavar='AUTOMATA',
+                        help="Automata algorithms for byzantine nodes")
     parser.add_argument('--link-failure', metavar='PROBABILITY', default=0, type=float,
                         help="Probability of message lost on every link. Float number between 0 and 1."
                              " Under link-failure the default limit steps is " + str(DEFAULT_LIMIT))
     parser.add_argument('-l', '--limit', type=int,
-                        help="Run simulator for LIMIT steps. Under link or node failure (stopping and byzantine) the "
-                             "default limit is " + str(DEFAULT_LIMIT) + " steps.")
+                        help="Run simulator for LIMIT steps. Under link-failure the default limit is "
+                             + str(DEFAULT_LIMIT) + " steps")
     parser.add_argument('-s', '--sleep', type=float, default=0.0,
                         help='Sleep for this number of seconds between steps')  # TODO
     args = parser.parse_args()
 
     with open(str(args.automata)) as f:
         automata = parse(f.readlines())
+
+    byzantine_automatons = []
+    if args.byzantine is not None:
+        for file in args.byzantine:
+            with open(str(file)) as f:
+                byzantine_automatons.append(parse(f.readlines()))
 
     if args.graph == UNIDIRECTIONAL_RING:
         graph = UnidirectionalRing(int(args.network_size))
@@ -69,19 +77,20 @@ def run_cli():
 
     if args.type == SYNC:
         if args.random_ids:
-            simulator = SyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+            simulator = SyncSimulatorWithRandomUID(graph, automata, byzantine_automatons, limit, link_failure_prob)
         else:
-            simulator = SyncSimulator(graph, automata, limit, link_failure_prob)
+            simulator = SyncSimulator(graph, automata, byzantine_automatons, limit, link_failure_prob)
     elif args.type == ASYNC:
         if args.random_ids:
-            simulator = AsyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+            simulator = AsyncSimulatorWithRandomUID(graph, automata, byzantine_automatons, limit, link_failure_prob)
         else:
-            simulator = AsyncSimulator(graph, automata, limit, link_failure_prob)
+            simulator = AsyncSimulator(graph, automata, byzantine_automatons, limit, link_failure_prob)
     elif args.type == ORDERED_ASYNC:
         if args.random_ids:
-            simulator = OrderedAsyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+            simulator = OrderedAsyncSimulatorWithRandomUID(graph, automata, byzantine_automatons, limit,
+                                                           link_failure_prob)
         else:
-            simulator = OrderedAsyncSimulator(graph, automata, limit, link_failure_prob)
+            simulator = OrderedAsyncSimulator(graph, automata, byzantine_automatons, limit, link_failure_prob)
 
     simulator.run()
 
