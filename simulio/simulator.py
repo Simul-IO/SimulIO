@@ -122,7 +122,7 @@ class BaseSimulator(ABC):
 
         next_state = self._exec(transitions['receive'].effect, {
             'state': current_state,
-            'from_node': from_local_id,
+            'from_node': deepcopy(from_local_id),
             'message': message,
         })
         self.states[to_node_id].update(next_state)
