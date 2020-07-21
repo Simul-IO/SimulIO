@@ -1,0 +1,186 @@
+# Luby's Maximal Independent Set algorithm for asynchronous nodes
+# http://books.google.com/books?id=G7SZ32dPuLgC&lpg=PA170&ots=fL4yuWJB5j&dq=luby%20maximal%20independent%20set%20asynchronous&pg=PA170#v=onepage&q&f=false
+
+
+# START_TRANSITION: init
+# EFFECT
+return {
+    'output_neighbour_ids': output_neighbour_ids,
+    'input_neighbour_ids': input_neighbour_ids,
+    'received_messages': [],
+    'rand': random.randint(1, (network_size**4)),
+    'selected': False,
+    'eliminated': False,
+    'received_random_msgs': [],
+    'received_selected_msgs':[],
+    'received_eliminated_msgs': [],
+    'send_selected_message': False,
+    'send_eliminated_message': False,
+    'send_rand_message': False,
+    'selected_false_nbrs': [],
+    'alive': True,
+}
+# OUTPUT
+return [[node_id, 'rand ' + str(state['rand'])] for node_id in state['output_neighbour_ids']]
+# END_TRANSITION
+
+
+# START_TRANSITION: receive
+# EFFECT
+return {
+    'received_messages': state['received_messages'] + [(message, from_node)],
+}
+# END_TRANSITION
+
+
+# START_TRANSITION: receive_rand_msg
+# PRE_CONDITION
+return state['alive'] and state['received_messages'] and state['received_messages'][0][0].startswith('rand ')
+# EFFECT
+received_rand_msg = int(state['received_messages'][0][0][5:])
+state['received_random_msgs'] = state['received_random_msgs'] + [received_rand_msg]
+state['received_messages'] = state['received_messages'][1:]
+state['send_selected_message'] = False
+if len(state['received_random_msgs']) == len(state['input_neighbour_ids']):
+    state['send_selected_message'] = True
+    is_smallest = True
+    for r in state['received_random_msgs']:
+        is_smallest = is_smallest and state['rand'] < r
+    state['received_random_msgs'] = []
+    if is_smallest:
+        state['selected'] = True
+        state['alive'] = False
+    return {
+        'selected': state['selected'],
+        'alive': state['alive'],
+        'received_random_msgs': state['received_random_msgs'],
+        'received_messages': state['received_messages'],
+        'send_selected_message': state['send_selected_message'],
+    }
+else:
+    return {
+        'received_random_msgs': state['received_random_msgs'],
+        'received_messages': state['received_messages'],
+        'send_selected_message': state['send_selected_message'],
+    }
+# OUTPUT
+return [[node_id, 'selected ' + str(state['selected'])] for node_id in state['output_neighbour_ids']] \
+    if state['send_selected_message'] else []
+# END_TRANSITION
+
+
+# START_TRANSITION: receive_selected_msg
+# PRE_CONDITION
+return state['alive'] and state['received_messages'] and state['received_messages'][0][0].startswith('selected ')
+# EFFECT
+received_selected_msg = (True, state['received_messages'][0][1]) if state['received_messages'][0][0][9:] == 'True' \
+    else (False, state['received_messages'][0][1])
+state['received_selected_msgs'] = state['received_selected_msgs'] + [received_selected_msg]
+state['received_messages'] = state['received_messages'][1:]
+state['send_eliminated_message'] = False
+if len(state['received_selected_msgs']) == len(state['input_neighbour_ids']):
+    state['send_eliminated_message'] = True
+    selected_nbrs = [m for m in state['received_selected_msgs'] if m[0]]
+    state['selected_false_nbrs'] = [m[1] for m in state['received_selected_msgs'] if not m[0]]
+    state['received_selected_msgs'] = []
+    if len(selected_nbrs) > 0:
+        state['eliminated'] = True
+        state['alive'] = False
+    return {
+        'eliminated': state['eliminated'],
+        'alive': state['alive'],
+        'received_selected_msgs': state['received_selected_msgs'],
+        'received_messages': state['received_messages'],
+        'send_eliminated_message': state['send_eliminated_message'],
+        'selected_false_nbrs': state['selected_false_nbrs'],
+    }
+else:
+    return {
+        'received_selected_msgs': state['received_selected_msgs'],
+        'received_messages': state['received_messages'],
+        'send_eliminated_message': state['send_eliminated_message'],
+    }
+# OUTPUT
+return [[node_id, 'eliminated ' + str(state['eliminated'])] for node_id in state['selected_false_nbrs']] \
+    if state['send_eliminated_message'] else []
+# END_TRANSITION
+
+
+# START_TRANSITION: receive_eliminated_msg
+# PRE_CONDITION
+return state['alive'] and state['received_messages'] and state['received_messages'][0][0].startswith('eliminated ')
+# EFFECT
+received_eliminated = (True, state['received_messages'][0][1]) if state['received_messages'][0][0][11:] == 'True' \
+    else (False, state['received_messages'][0][1])
+state['received_eliminated_msgs'] = state['received_eliminated_msgs'] + [received_eliminated]
+state['received_messages'] = state['received_messages'][1:]
+state['send_rand_message'] = False
+if len(state['received_eliminated_msgs']) == len(state['input_neighbour_ids']):
+    state['send_rand_message'] = True
+    new_nbrs = []
+    for nbr in state['input_neighbour_ids']:
+        if (True, nbr) not in state['received_eliminated_msgs']:
+            new_nbrs.append(nbr)
+    state['input_neighbour_ids'] = new_nbrs
+    state['output_neighbour_ids'] = new_nbrs
+    state['received_eliminated_msgs'] = []
+    if len(new_nbrs) == 0:
+        state['selected'] = True
+        state['alive'] = False
+    else:
+        state['rand'] = random.randint(1, 10000)
+    return {
+        'output_neighbour_ids': state['output_neighbour_ids'],
+        'input_neighbour_ids': state['input_neighbour_ids'],
+        'rand': state['rand'],
+        'selected': state['selected'],
+        'alive': state['alive'],
+        'send_rand_message': state['send_rand_message'],
+        'received_eliminated_msgs': state['received_eliminated_msgs'],
+        'received_messages': state['received_messages'],
+    }
+else:
+    return {
+        'send_rand_message': state['send_rand_message'],
+        'received_eliminated_msgs': state['received_eliminated_msgs'],
+        'received_messages': state['received_messages'],
+    }
+# OUTPUT
+return [[node_id, 'rand ' + str(state['rand'])] for node_id in state['output_neighbour_ids']] \
+    if state['alive'] and state['send_rand_message'] else []
+# END_TRANSITION
+
+
+# START_TRANSITION: check_rand
+# PRE_CONDITION
+return state['alive'] and len(state['received_random_msgs']) == len(state['input_neighbour_ids'])
+# EFFECT
+state['send_selected_message'] = True
+is_smallest = True
+for r in state['received_random_msgs']:
+    is_smallest = is_smallest and state['rand'] < r
+state['received_random_msgs'] = []
+if is_smallest:
+    state['selected'] = True
+    state['alive'] = False
+return {
+    'selected': state['selected'],
+    'alive': state['alive'],
+    'received_random_msgs': state['received_random_msgs'],
+    'received_messages': state['received_messages'],
+    'send_selected_message': state['send_selected_message'],
+}
+# OUTPUT
+return [[node_id, 'selected ' + str(state['selected'])] for node_id in state['output_neighbour_ids']] \
+    if state['send_selected_message'] else []
+# END_TRANSITION
+
+
+# START_TRANSITION: visualize
+# EFFECT
+return {
+    'label': 'id: ' + str(state['id']) + '\nrand: ' + str(state['rand']),
+    'color': '#cccccc' if (state['selected'] == False and state['eliminated'] == False) \
+                       else '#70E740' if state['selected'] else '#f7c7c7'
+}
+# END_TRANSITION

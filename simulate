@@ -2,9 +2,11 @@
 
 import json
 import argparse
+import sys
 
 from simulio.graph import UnidirectionalRing, BidirectionalRing, CompleteGraph, ArbitraryGraph
-from simulio.simulator import SyncSimulator, SyncSimulatorWithUID, AsyncSimulator, AsyncSimulatorWithUID
+from simulio.simulator import SyncSimulator, SyncSimulatorWithRandomUID, AsyncSimulator, AsyncSimulatorWithRandomUID, \
+    OrderedAsyncSimulator, OrderedAsyncSimulatorWithRandomUID
 from simulio.transition import parse
 
 UNIDIRECTIONAL_RING = 'UnidirectionalRing'
@@ -12,10 +14,11 @@ BIDIRECTIONAL_RING = 'BidirectionalRing'
 COMPLETE_GRAPH = 'CompleteGraph'
 ARBITRARY_GRAPH = 'Arbitrary'
 
-SYNC_SIMULATOR = 'SyncSimulator'
-SYNC_SIMULATOR_WITH_UID = 'SyncSimulatorWithUID'
-ASYNC_SIMULATOR = 'AsyncSimulator'
-ASYNC_SIMULATOR_WITH_UID = 'AsyncSimulatorWithUID'
+SYNC = "sync"
+ASYNC = "async"
+ORDERED_ASYNC = "ordered-async"
+
+DEFAULT_LIMIT = 10000
 
 
 def run_cli():
@@ -26,15 +29,22 @@ def run_cli():
                         choices=[UNIDIRECTIONAL_RING, BIDIRECTIONAL_RING, COMPLETE_GRAPH, ARBITRARY_GRAPH],
                         help='Simulate the automaton operating on GRAPH')
     parser.add_argument('-n', '--network-size',
-                        help="For UnidirectionalRing and BidirectionalRing and CompleteGraph must specify network size")
+                        help="For Uni/BidirectionalRing and CompleteGraph must specify network size")
     parser.add_argument('-gf', '--graph-file',
                         help='For Arbitrary graph, give a graph file definition')
     parser.add_argument('-t', '--type',
-                        choices=[SYNC_SIMULATOR, SYNC_SIMULATOR_WITH_UID, ASYNC_SIMULATOR_WITH_UID],
-                        help='type of simulator(Sync, Sync-UID, Async-UID)'
-                        )
+                        choices=[SYNC, ASYNC, ORDERED_ASYNC],
+                        help='type of simulator(sync, async, ordered-async)')
+    parser.add_argument('-r', '--random-ids', action='store_true',
+                        help="Generate random uids for graph nodes")
     parser.add_argument('-o', '--output', type=argparse.FileType('w'), default='-',
                         help='Output file to write result to it.')
+    parser.add_argument('--link-failure', metavar='PROBABILITY', default=0, type=float,
+                        help="Probability of message lost on every link. Float number between 0 and 1."
+                             " Under link-failure the default limit steps is " + str(DEFAULT_LIMIT))
+    parser.add_argument('-l', '--limit', type=int,
+                        help="Run simulator for LIMIT steps. Under link or node failure (stopping and byzantine) the "
+                             "default limit is " + str(DEFAULT_LIMIT) + " steps.")
     parser.add_argument('-s', '--sleep', type=float, default=0.0,
                         help='Sleep for this number of seconds between steps')  # TODO
     args = parser.parse_args()
@@ -51,14 +61,27 @@ def run_cli():
     else:  # ARBITRARY_GRAPH
         graph = ArbitraryGraph(str(args.graph_file))
 
-    if args.type == SYNC_SIMULATOR:
-        simulator = SyncSimulator(graph, automata)
-    elif args.type == SYNC_SIMULATOR_WITH_UID:
-        simulator = SyncSimulatorWithUID(graph, automata)
-    elif args.type == ASYNC_SIMULATOR:
-        simulator = AsyncSimulator(graph, automata)
-    else:  # ASYNC_SIMULATOR_WITH_UID:
-        simulator = AsyncSimulatorWithUID(graph, automata)
+    limit = args.limit
+    if args.link_failure != 0 and args.limit is None:  # TODO node failure
+        limit = DEFAULT_LIMIT
+
+    link_failure_prob = float(args.link_failure)
+
+    if args.type == SYNC:
+        if args.random_ids:
+            simulator = SyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+        else:
+            simulator = SyncSimulator(graph, automata, limit, link_failure_prob)
+    elif args.type == ASYNC:
+        if args.random_ids:
+            simulator = AsyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+        else:
+            simulator = AsyncSimulator(graph, automata, limit, link_failure_prob)
+    elif args.type == ORDERED_ASYNC:
+        if args.random_ids:
+            simulator = OrderedAsyncSimulatorWithRandomUID(graph, automata, limit, link_failure_prob)
+        else:
+            simulator = OrderedAsyncSimulator(graph, automata, limit, link_failure_prob)
 
     simulator.run()
 
