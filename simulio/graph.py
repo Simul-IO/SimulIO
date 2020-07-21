@@ -117,6 +117,18 @@ class StarGraph(Graph):
         super().__init__(nodes, edges)
 
 
+class BinaryGraph(Graph):
+    def __init__(self, n):
+        nodes = []
+        edges = []
+        for i in range(n):
+            nodes.append(Node(i))
+            if (i + 1) // 2 > 0:
+                edges.append(Edge(i, ((i + 1) // 2) - 1))
+                edges.append(Edge(((i + 1) // 2) - 1, i))
+        super().__init__(nodes, edges)
+
+
 class RandomGraph(Graph):
     def __init__(self, n, m):
         nodes = []

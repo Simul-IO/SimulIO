@@ -5,7 +5,7 @@ import argparse
 import sys
 
 from simulio.graph import UnidirectionalRing, BidirectionalRing, KRegularRing, CompleteGraph, BipartiteGraph, \
-    StarGraph, RandomGraph, ArbitraryGraph
+    StarGraph, BinaryGraph, RandomGraph, ArbitraryGraph
 from simulio.simulator import SyncSimulator, SyncSimulatorWithRandomUID, AsyncSimulator, AsyncSimulatorWithRandomUID, \
     OrderedAsyncSimulator, OrderedAsyncSimulatorWithRandomUID
 from simulio.transition import parse
@@ -16,8 +16,9 @@ K_REGULAR_RING = 'k-regular-ring'
 COMPLETE_GRAPH = 'complete'
 BIPARTITE_GRAPH = 'bipartite'
 STAR_GRAPH = 'star'
-ARBITRARY_GRAPH = 'arbitrary'
+BINARY_GRAPH = 'binary'
 RANDOM_GRAPH = 'random'
+ARBITRARY_GRAPH = 'arbitrary'
 
 SYNC = "sync"
 ASYNC = "async"
@@ -32,7 +33,7 @@ def run_cli():
                         help='Automata algorithm file')
     parser.add_argument('-g', '--graph', required=True, nargs='+',
                         metavar=('unidirectional-ring, bidirectional-ring, k-regular-ring(N,K), complete,'
-                                 ' bipartite(N,M), star, random(N nodes M edges), arbitrary'
+                                 ' bipartite(N,M), star, binary, random(N nodes M edges), arbitrary'
                                  'SIZE, N M, GRAPH_FILE'),
                         help='Simulate the automaton operating on GRAPH')
     parser.add_argument('-t', '--type',
@@ -78,6 +79,8 @@ def run_cli():
         graph = RandomGraph(int(args.graph[1]), int(args.graph[2]))
     elif graph_type == K_REGULAR_RING:
         graph = KRegularRing(int(args.graph[1]), int(args.graph[2]))
+    elif graph_type == BINARY_GRAPH:
+        graph = BinaryGraph(int(args.graph[1]))
     else:  # ARBITRARY_GRAPH
         graph = ArbitraryGraph(str(args.graph[1]))
 
