@@ -4,11 +4,13 @@
 
 # START_TRANSITION: init
 # EFFECT
+random_limit = network_size**4
 return {
     'output_neighbour_ids': output_neighbour_ids,
     'input_neighbour_ids': input_neighbour_ids,
     'received_messages': [],
-    'rand': random.randint(1, (network_size**4)),
+    'random_limit': random_limit,
+    'rand': random.randint(1, random_limit),
     'selected': False,
     'eliminated': False,
     'received_random_msgs': [],
@@ -128,7 +130,7 @@ if len(state['received_eliminated_msgs']) == len(state['input_neighbour_ids']):
         state['selected'] = True
         state['alive'] = False
     else:
-        state['rand'] = random.randint(1, 10000)
+        state['rand'] = random.randint(1, state['random_limit'])
     return {
         'output_neighbour_ids': state['output_neighbour_ids'],
         'input_neighbour_ids': state['input_neighbour_ids'],
